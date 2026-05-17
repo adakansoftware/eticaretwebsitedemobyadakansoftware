@@ -26,7 +26,7 @@ export async function Header() {
           <Link className="transition hover:text-emerald-800" href="/products">
             Urunler
           </Link>
-          <Link className="transition hover:text-emerald-800" href="/category/telefon-aksesuarlari">
+          <Link className="transition hover:text-emerald-800" href="/categories">
             Kategoriler
           </Link>
           <Link className="transition hover:text-emerald-800" href="/legal/iletisim">

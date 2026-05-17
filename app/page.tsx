@@ -21,7 +21,8 @@ export default async function HomePage() {
     prisma.category.findMany({
       where: { isActive: true },
       take: 3,
-      orderBy: { createdAt: "asc" }
+      orderBy: { createdAt: "asc" },
+      include: { _count: { select: { products: true } } }
     }),
     prisma.banner.findFirst({
       where: { isActive: true },
@@ -117,7 +118,7 @@ export default async function HomePage() {
                 className="group rounded-[2rem] border border-slate-200 bg-white/75 p-6 shadow-lg shadow-slate-900/5 transition hover:-translate-y-1 hover:shadow-xl"
               >
                 <p className="text-[0.68rem] font-bold uppercase tracking-[0.26em] text-amber-700">
-                  Category edit
+                  Kategori
                 </p>
                 <h2 className="mt-3 text-2xl font-black tracking-tight text-slate-950">
                   {category.name}
@@ -125,6 +126,9 @@ export default async function HomePage() {
                 <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600">
                   {category.description ??
                     "Kategori vitrini, filtrelenebilir katalog ve profesyonel urun akisi icin hazir."}
+                </p>
+                <p className="mt-4 text-sm font-semibold text-slate-500">
+                  {category._count.products} urun
                 </p>
                 <span className="mt-6 inline-flex text-sm font-bold text-emerald-900 transition group-hover:translate-x-1">
                   Kategoriyi ac
