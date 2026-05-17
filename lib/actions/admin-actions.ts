@@ -20,9 +20,29 @@ function buildProductData(formData: FormData) {
   return { imageUrl, productData };
 }
 
-export async function updateOrderStatusAction(orderId: string, status: string, adminNote?: string) {
+export async function updateOrderStatusAction(formData: FormData) {
+  const orderId = String(formData.get("orderId") ?? "");
+  const status = String(formData.get("status") ?? "");
+  const adminNote = String(formData.get("adminNote") ?? "");
+  const allowedStatuses = [
+    "PENDING",
+    "WAITING_PAYMENT",
+    "PAID",
+    "PREPARING",
+    "SHIPPED",
+    "DELIVERED",
+    "CANCELLED",
+    "REFUNDED"
+  ];
+
+  if (!orderId) throw new Error("Siparis bulunamadi");
+  if (!allowedStatuses.includes(status)) throw new Error("Gecersiz siparis durumu");
+
   await requireAdmin();
-  await prisma.order.update({ where: { id: orderId }, data: { status: status as any, adminNote } });
+  await prisma.order.update({
+    where: { id: orderId },
+    data: { status: status as any, adminNote: adminNote || null }
+  });
   revalidatePath("/admin/orders");
 }
 
