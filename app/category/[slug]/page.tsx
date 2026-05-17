@@ -26,13 +26,23 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
     <>
       <Header />
       <main className="mx-auto max-w-7xl px-4 py-10">
-        <h1 className="text-3xl font-black">{category.name}</h1>
-        <p className="mt-2 text-slate-600">{category.description}</p>
-        <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {category.products.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
+        <section className="rounded-[2.5rem] border border-slate-200 bg-white/80 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.06)] backdrop-blur md:p-8">
+          <p className="text-[0.72rem] font-bold uppercase tracking-[0.34em] text-amber-700">
+            Curated category
+          </p>
+          <h1 className="mt-3 text-4xl font-black tracking-tight text-slate-950 md:text-5xl">
+            {category.name}
+          </h1>
+          <p className="mt-3 max-w-3xl text-base leading-7 text-slate-600">
+            {category.description}
+          </p>
+
+          <div className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+            {category.products.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        </section>
       </main>
     </>
   );

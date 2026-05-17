@@ -1,4 +1,6 @@
 import Image from "next/image";
+import Link from "next/link";
+import { ChevronRight, ShieldCheck, Truck } from "lucide-react";
 import { notFound } from "next/navigation";
 import { Header } from "@/components/storefront/header";
 import { AddToCartButton } from "@/components/storefront/add-to-cart-button";
@@ -26,23 +28,73 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
   return (
     <>
       <Header />
-      <main className="mx-auto grid max-w-7xl gap-10 px-4 py-12 md:grid-cols-2">
-        <div className="relative aspect-square overflow-hidden rounded-[2rem] bg-slate-100">
-          <Image src={image} alt={product.name} fill className="object-cover" />
+      <main className="mx-auto max-w-7xl px-4 py-10">
+        <div className="mb-6 flex items-center gap-2 text-sm text-slate-500">
+          <Link href="/products" className="hover:text-slate-900">
+            Urunler
+          </Link>
+          <ChevronRight className="h-4 w-4" />
+          <span>{product.name}</span>
         </div>
-        <div>
-          <p className="font-bold text-slate-500">
-            {product.category.name}
-            {product.brand ? ` · ${product.brand.name}` : ""}
-          </p>
-          <h1 className="mt-3 text-4xl font-black">{product.name}</h1>
-          <p className="mt-4 text-3xl font-black">{formatPrice(product.price.toString())}</p>
-          <p className="mt-6 leading-8 text-slate-600">{product.description}</p>
-          <p className="mt-6 text-sm font-bold">Stok: {product.stock}</p>
-          <div className="mt-8 max-w-sm">
-            <AddToCartButton productId={product.id} />
+
+        <section className="grid gap-8 lg:grid-cols-[1fr_.95fr]">
+          <div className="overflow-hidden rounded-[2.6rem] border border-slate-200 bg-white/80 p-4 shadow-[0_24px_80px_rgba(15,23,42,0.06)] backdrop-blur">
+            <div className="relative aspect-square overflow-hidden rounded-[2rem] bg-gradient-to-br from-stone-100 via-stone-50 to-amber-50">
+              <Image src={image} alt={product.name} fill className="object-cover" />
+            </div>
           </div>
-        </div>
+
+          <div className="rounded-[2.6rem] border border-slate-200 bg-white/85 p-8 shadow-[0_24px_80px_rgba(15,23,42,0.06)] backdrop-blur">
+            <p className="text-[0.72rem] font-bold uppercase tracking-[0.32em] text-amber-700">
+              {product.category.name}
+              {product.brand ? ` · ${product.brand.name}` : ""}
+            </p>
+            <h1 className="mt-3 text-4xl font-black tracking-tight text-slate-950 md:text-5xl">
+              {product.name}
+            </h1>
+            <p className="mt-5 text-4xl font-black tracking-tight text-slate-950">
+              {formatPrice(product.price.toString())}
+            </p>
+            <p className="mt-6 text-base leading-8 text-slate-600">{product.description}</p>
+
+            <div className="mt-8 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center gap-3">
+                  <Truck className="h-5 w-5 text-emerald-900" />
+                  <p className="text-sm font-bold text-slate-900">Hazir sevk akisi</p>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  Siparis ve stok akisina uygun hizli operasyon kurulumu.
+                </p>
+              </div>
+              <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center gap-3">
+                  <ShieldCheck className="h-5 w-5 text-emerald-900" />
+                  <p className="text-sm font-bold text-slate-900">Server-side kontrol</p>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  Fiyat, toplam ve stok dogrulamasi siparis aninda tekrar yapilir.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-8 flex items-center justify-between rounded-[1.7rem] border border-slate-200 bg-white px-5 py-4">
+              <div>
+                <p className="text-[0.68rem] font-bold uppercase tracking-[0.22em] text-slate-500">
+                  Stok durumu
+                </p>
+                <p className="mt-1 text-xl font-black text-slate-950">{product.stock} adet</p>
+              </div>
+              <span className="rounded-full bg-emerald-900 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-white">
+                Aktif urun
+              </span>
+            </div>
+
+            <div className="mt-8 max-w-sm">
+              <AddToCartButton productId={product.id} />
+            </div>
+          </div>
+        </section>
       </main>
     </>
   );
