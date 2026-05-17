@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Header } from "@/components/storefront/header";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,11 @@ import { calculateCartTotals, getCart } from "@/lib/cart";
 import { getEffectiveUnitPrice } from "@/lib/commerce";
 import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/utils";
+
+export const metadata: Metadata = {
+  title: "Sepet",
+  description: "Sepetinizdeki ürünleri kontrol edin, kargo ve ödeme adımına güvenle geçin."
+};
 
 export default async function CartPage() {
   const [cart, settings] = await Promise.all([getCart(), prisma.siteSettings.findFirst()]);
@@ -33,14 +39,13 @@ export default async function CartPage() {
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
               <p className="text-[0.72rem] font-bold uppercase tracking-[0.34em] text-amber-700">
-                Secure basket
+                Sepet
               </p>
               <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-950 md:text-5xl">
                 Sepet
               </h1>
               <p className="mt-3 max-w-2xl text-base leading-7 text-slate-600">
-                Fiyat, stok ve kupon uygunlugu her adimda sunucu tarafinda yeniden
-                dogrulanir. Client tarafindaki toplamlar siparis verisini belirlemez.
+                Sepetinizdeki ürünleri kontrol edin, kargo ve ödeme adımına güvenle geçin.
               </p>
             </div>
 
@@ -54,14 +59,13 @@ export default async function CartPage() {
           {cart.items.length === 0 ? (
             <div className="mt-10 grid gap-6 rounded-[2rem] border border-dashed border-slate-300 bg-slate-50 p-8 md:grid-cols-[1fr_auto] md:items-center">
               <div>
-                <h2 className="text-2xl font-black text-slate-950">Sepetin su an bos</h2>
+                <h2 className="text-2xl font-black text-slate-950">Sepetiniz şu an boş</h2>
                 <p className="mt-2 max-w-xl text-slate-600">
-                  Vitrinden urun ekledikten sonra kargo, kupon ve checkout akislarini
-                  burada gorebilirsin.
+                  Ürün ekledikten sonra ödeme adımına geçebilirsiniz.
                 </p>
               </div>
               <Button asChild size="lg">
-                <Link href="/products">Kataloga don</Link>
+                <Link href="/products">Ürünleri keşfet</Link>
               </Button>
             </div>
           ) : (
@@ -69,6 +73,7 @@ export default async function CartPage() {
               <div className="space-y-4">
                 {cart.items.map((item) => {
                   const effectivePrice = getEffectiveUnitPrice(item.product);
+
                   return (
                     <article
                       key={item.id}
@@ -77,7 +82,7 @@ export default async function CartPage() {
                       <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
                         <div className="space-y-2">
                           <p className="text-xs font-bold uppercase tracking-[0.22em] text-amber-700">
-                            {item.product.brand?.name ?? "Adakan selection"}
+                            {item.product.brand?.name ?? "Seçili ürün"}
                           </p>
                           <h2 className="text-xl font-black tracking-tight text-slate-950">
                             {item.product.name}
@@ -120,7 +125,7 @@ export default async function CartPage() {
                               className="h-11 w-24 rounded-full border border-slate-200 px-4 text-sm outline-none transition focus:border-emerald-700"
                             />
                             <Button type="submit" variant="outline">
-                              Guncelle
+                              Güncelle
                             </Button>
                           </form>
 
@@ -131,7 +136,7 @@ export default async function CartPage() {
                             <form action={removeCartItemFormAction}>
                               <input type="hidden" name="itemId" value={item.id} />
                               <Button type="submit" variant="ghost">
-                                Kaldir
+                                Kaldır
                               </Button>
                             </form>
                           </div>
@@ -145,7 +150,7 @@ export default async function CartPage() {
               <aside className="space-y-4">
                 <div className="rounded-[2rem] border border-slate-200 bg-slate-950 p-6 text-white shadow-[0_24px_70px_rgba(15,23,42,0.22)]">
                   <p className="text-xs font-bold uppercase tracking-[0.28em] text-emerald-100/75">
-                    Siparis ozeti
+                    Sipariş özeti
                   </p>
 
                   <div className="mt-6 space-y-3 text-sm text-white/80">
@@ -154,7 +159,7 @@ export default async function CartPage() {
                       <span>{formatPrice(totals.subtotal)}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span>Indirim</span>
+                      <span>İndirim</span>
                       <span>-{formatPrice(totals.discountTotal)}</span>
                     </div>
                     <div className="flex items-center justify-between">
@@ -173,7 +178,7 @@ export default async function CartPage() {
                       <input
                         name="couponCode"
                         defaultValue={cart.couponCode ?? ""}
-                        placeholder="ORN. HOSGELDIN50"
+                        placeholder="ÖRN. HOSGELDIN50"
                         className="h-11 flex-1 rounded-full border border-white/10 bg-white/10 px-4 text-sm text-white outline-none placeholder:text-white/40 focus:border-white/25"
                       />
                       <Button type="submit" variant="outline" className="border-white/15 bg-white text-slate-950">
@@ -189,7 +194,7 @@ export default async function CartPage() {
                   ) : null}
 
                   <Button asChild size="lg" className="mt-6 w-full">
-                    <Link href="/checkout">Guvenli checkout</Link>
+                    <Link href="/checkout">Ödeme adımına geç</Link>
                   </Button>
                 </div>
 
@@ -197,13 +202,13 @@ export default async function CartPage() {
                   <h3 className="text-lg font-black text-slate-950">Kargo notu</h3>
                   <p className="mt-2 text-sm leading-6 text-slate-600">
                     {settings?.checkoutMessage ??
-                      "Odeme ve kargo detaylari siparis olusturulurken yeniden dogrulanir."}
+                      "Kargo ve ödeme detaylarınız siparişiniz tamamlanmadan önce son kez kontrol edilir."}
                   </p>
                   {freeShippingThreshold > 0 ? (
                     <p className="mt-4 text-sm font-semibold text-emerald-800">
                       {amountForFreeShipping > 0
-                        ? `${formatPrice(amountForFreeShipping)} daha ekleyerek ucretsiz kargo esigine ulasabilirsin.`
-                        : "Bu sepet ucretsiz kargo esigini gecti."}
+                        ? `${formatPrice(amountForFreeShipping)} daha ekleyerek ücretsiz kargo eşiğine ulaşabilirsiniz.`
+                        : "Bu sepet ücretsiz kargo eşiğine ulaştı."}
                     </p>
                   ) : null}
                 </div>

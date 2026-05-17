@@ -52,8 +52,8 @@ export default async function HomePage() {
               Seçili ürünlerde güvenli ve hızlı alışveriş
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-700">
-              Telefon aksesuarlarından ofis ürünlerine kadar özenle seçilmiş ürünleri
-              güvenli ödeme, hızlı teslimat ve kolay iade avantajıyla keşfedin.
+              Telefon aksesuarlarından ofis ürünlerine kadar özenle seçilmiş ürünleri güvenli
+              ödeme, hızlı teslimat ve kolay iade avantajıyla keşfedin.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Button asChild size="lg">
@@ -86,11 +86,11 @@ export default async function HomePage() {
               Alışveriş avantajları
             </p>
             <h2 className="relative mt-4 text-3xl font-black tracking-tight md:text-4xl">
-              {banner?.title ?? "Güvenli alışveriş, hızlı destek"}
+              {banner?.title ?? "Özenle seçilmiş ürünler, hızlı destek"}
             </h2>
             <p className="relative mt-3 text-base leading-7 text-emerald-50/80">
               {banner?.subtitle ??
-                "Kapıda ödeme, EFT / Havale ve güvenli sipariş akışı ile alışverişinizi kolaylaştırıyoruz."}
+                "Kapıda ödeme, EFT / Havale ve kolay sipariş akışı ile alışverişinizi rahatça tamamlayın."}
             </p>
             <div className="relative mt-8 grid gap-4">
               <div className="rounded-[1.8rem] border border-white/10 bg-white/10 p-5 backdrop-blur">
@@ -98,7 +98,7 @@ export default async function HomePage() {
                   Güvenli alışveriş
                 </p>
                 <p className="mt-2 text-sm leading-6 text-white/80">
-                  Sepet toplamları ve stok bilgileri sipariş anında yeniden kontrol edilir.
+                  Siparişinizi tamamlamadan önce ürün, ödeme ve teslimat detaylarınızı kolayca gözden geçirebilirsiniz.
                 </p>
               </div>
               <div className="rounded-[1.8rem] border border-white/10 bg-white/10 p-5 backdrop-blur">
@@ -152,7 +152,7 @@ export default async function HomePage() {
                   Öne çıkan ürünler
                 </p>
                 <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-950 md:text-4xl">
-                  Seçili ürünler
+                  Özenle seçilmiş ürünler
                 </h2>
               </div>
               <Link href="/products" className="text-sm font-bold uppercase tracking-[0.18em] text-emerald-900">

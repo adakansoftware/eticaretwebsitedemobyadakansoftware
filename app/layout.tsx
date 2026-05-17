@@ -5,11 +5,11 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "Adakan Commerce | Guvenli ve Hizli Alisveris",
+    default: "Adakan Commerce | Güvenli ve Hızlı Alışveriş",
     template: "%s | Adakan Commerce"
   },
   description:
-    "Telefon aksesuarlari, ofis urunleri ve secili teknoloji kategorilerinde guvenli odeme ve hizli teslimat deneyimi."
+    "Telefon aksesuarları, ofis ürünleri ve seçili teknoloji kategorilerinde güvenli ödeme ve hızlı teslimat deneyimi."
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

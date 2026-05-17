@@ -127,8 +127,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                 Ürünler
               </h1>
               <p className="mt-3 text-base leading-7 text-slate-600">
-                Kategori, marka, stok ve fiyat odaklı filtrelerle ihtiyaç duyduğunuz
-                ürünlere hızlıca ulaşın.
+                Kategori, marka, stok ve fiyat filtreleriyle aradığınız ürünlere hızlıca ulaşın.
               </p>
             </div>
 
@@ -200,7 +199,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-bold text-slate-900">Siralama</label>
+                  <label className="mb-2 block text-sm font-bold text-slate-900">Sıralama</label>
                   <select
                     name="sort"
                     defaultValue={sort}
@@ -264,8 +263,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                 </div>
               ) : (
                 <div className="mt-6 rounded-[2rem] border border-dashed border-slate-300 bg-slate-50 p-8 text-slate-600">
-                  Bu filtre kombinasyonuyla eslesen aktif urun bulunamadi.
-                  
+                  Bu filtre kombinasyonuyla eşleşen aktif ürün bulunamadı.
                 </div>
               )}
 
@@ -281,7 +279,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                         page: pagination.hasPreviousPage ? String(page - 1) : String(page)
                       })}
                     >
-                      Onceki
+                      Önceki
                     </Link>
                   </Button>
 

@@ -1,8 +1,8 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { Header } from "@/components/storefront/header";
 import { ProductCard } from "@/components/storefront/product-card";
 import { prisma } from "@/lib/prisma";
-import { notFound } from "next/navigation";
 
 type CategoryPageProps = {
   params: Promise<{ slug: string }>;

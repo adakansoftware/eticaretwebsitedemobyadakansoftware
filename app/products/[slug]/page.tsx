@@ -61,7 +61,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
       <main className="mx-auto max-w-7xl px-4 py-10">
         <div className="mb-6 flex items-center gap-2 text-sm text-slate-500">
           <Link href="/products" className="hover:text-slate-900">
-            Urunler
+            Ürünler
           </Link>
           <ChevronRight className="h-4 w-4" />
           <span>{product.name}</span>
@@ -111,7 +111,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                   {Number(product.ratingAverage).toFixed(1)} puan · {product.ratingCount} yorum
                 </span>
               ) : (
-                <span>Ilk degerlendiren sen olabilirsin</span>
+                <span>İlk değerlendiren sen olabilirsin</span>
               )}
             </div>
             <p className="mt-6 text-base leading-8 text-slate-600">{product.description}</p>
@@ -120,19 +120,19 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
               <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
                 <div className="flex items-center gap-3">
                   <Truck className="h-5 w-5 text-emerald-900" />
-                  <p className="text-sm font-bold text-slate-900">Hazir sevk akisi</p>
+                  <p className="text-sm font-bold text-slate-900">Hazır sevk</p>
                 </div>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  Siparis ve stok akisina uygun hizli operasyon kurulumu.
+                  Siparişiniz hazırlık sürecine hızlıca alınır.
                 </p>
               </div>
               <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
                 <div className="flex items-center gap-3">
                   <ShieldCheck className="h-5 w-5 text-emerald-900" />
-                  <p className="text-sm font-bold text-slate-900">Server-side kontrol</p>
+                  <p className="text-sm font-bold text-slate-900">Güvenli sipariş</p>
                 </div>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  Fiyat, toplam ve stok dogrulamasi siparis aninda tekrar yapilir.
+                  Siparişinizi tamamlamadan önce fiyat ve stok bilgileri kontrol edilir.
                 </p>
               </div>
             </div>
@@ -145,7 +145,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                 <p className="mt-1 text-xl font-black text-slate-950">{product.stock} adet</p>
               </div>
               <span className="rounded-full bg-emerald-900 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-white">
-                Aktif urun
+                Aktif ürün
               </span>
             </div>
 
@@ -165,15 +165,13 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
           <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
               <p className="text-[0.72rem] font-bold uppercase tracking-[0.3em] text-amber-700">
-                Musteri yorumlari
+                Müşteri yorumları
               </p>
               <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-950">
-                Musteri yorumlari
+                Müşteri yorumları
               </h2>
             </div>
-            <p className="text-sm text-slate-500">
-              Yalnizca onayli yorumlar vitrinde gorunur.
-            </p>
+            <p className="text-sm text-slate-500">Yalnızca onaylı yorumlar vitrinde görünür.</p>
           </div>
 
           <div className="mt-6 grid gap-4">
@@ -183,10 +181,10 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                   <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <div>
                       <h3 className="text-lg font-black text-slate-950">
-                        {review.title ?? "Musteri deneyimi"}
+                        {review.title ?? "Müşteri deneyimi"}
                       </h3>
                       <p className="mt-2 text-sm leading-7 text-slate-600">
-                        {review.body ?? "Bu yorum icin detay metni yok."}
+                        {review.body ?? "Bu yorum için detay metni yok."}
                       </p>
                     </div>
                     <div className="text-left md:text-right">
@@ -198,7 +196,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
               ))
             ) : (
               <div className="rounded-[1.6rem] border border-dashed border-slate-300 bg-slate-50 p-6 text-slate-600">
-                Henuz onayli yorum yok. Admin panelinden moderasyon yapildikca bu alan dolacak.
+                Henüz onaylı yorum yok.
               </div>
             )}
           </div>

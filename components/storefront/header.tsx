@@ -8,6 +8,7 @@ export async function Header() {
     getCurrentUser(),
     prisma.siteSettings.findFirst({ select: { siteName: true } })
   ]);
+
   const siteName = settings?.siteName || "Adakan Commerce";
 
   return (
@@ -40,11 +41,6 @@ export async function Header() {
           <Link className="transition hover:text-emerald-800" href="/legal/iletisim">
             İletişim
           </Link>
-          {user ? (
-            <Link className="transition hover:text-emerald-800" href="/account/wishlist">
-              Favorilerim
-            </Link>
-          ) : null}
         </nav>
 
         <div className="flex items-center gap-2">
@@ -61,7 +57,7 @@ export async function Header() {
             href={user ? "/orders" : "/login"}
             className="hidden rounded-full border border-slate-300 px-4 py-2 text-sm font-bold text-slate-900 transition hover:border-amber-500 hover:bg-white md:inline-flex"
           >
-            {user ? "Hesabim" : "Giris yap"}
+            {user ? "Hesabım" : "Giriş yap"}
           </Link>
 
           <Link
