@@ -22,6 +22,20 @@ export const checkoutSchema = z.object({
   customerNote: z.string().max(500).optional()
 });
 
+export const addressSchema = z.object({
+  title: z.string().min(2, "Adres basligi en az 2 karakter olmali"),
+  fullName: z.string().min(2, "Ad soyad en az 2 karakter olmali"),
+  phone: z.string().min(10, "Telefon numarasi gecersiz"),
+  city: z.string().min(2, "Sehir bilgisi gerekli"),
+  district: z.string().min(2, "Ilce bilgisi gerekli"),
+  address: z.string().min(10, "Adres detayi en az 10 karakter olmali"),
+  postalCode: z.string().max(12).optional(),
+  isDefault: z
+    .union([z.literal("on"), z.literal("true"), z.literal("false"), z.literal("")])
+    .optional()
+    .transform((value) => value === "on" || value === "true")
+});
+
 export const productAdminSchema = z.object({
   name: z.string().min(2),
   slug: z.string().min(2),
