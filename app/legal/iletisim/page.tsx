@@ -1,0 +1,2 @@
+import { Header } from "@/components/storefront/header";
+export default function LegalPage() { return <><Header /><main className="mx-auto max-w-3xl px-4 py-12"><article className="rounded-3xl bg-white p-8 shadow-sm"><h1 className="text-3xl font-black capitalize">iletisim</h1><p className="mt-4 leading-8 text-slate-600">Bu sayfa marka/proje bazında avukat veya muhasebeci kontrolüyle özelleştirilmelidir. Core proje hukuki sayfa iskeletini hazır sunar.</p></article></main></>; }
