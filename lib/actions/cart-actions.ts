@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { actionError, actionSuccess, type ActionResult } from "@/lib/action-response";
-import { calculateCartTotals, getCart } from "@/lib/cart";
+import { calculateCartTotals, getCart, getOrCreateCart } from "@/lib/cart";
 import { prisma } from "@/lib/prisma";
 import {
   cartItemIdSchema,
@@ -34,7 +34,7 @@ export async function addToCartAction(
     return actionError("Secilen adet icin yeterli stok yok");
   }
 
-  const cart = await getCart();
+  const cart = await getOrCreateCart();
   const existingItem = await prisma.cartItem.findUnique({
     where: {
       cartId_productId: {
@@ -125,6 +125,9 @@ export async function removeCartItemAction(
 
 export async function clearCartAction(): Promise<ActionResult<{ cartId: string }>> {
   const cart = await getCart();
+  if (!cart.id) {
+    return actionSuccess({ cartId: "" }, "Sepet zaten bos");
+  }
 
   await prisma.cart.update({
     where: { id: cart.id },
@@ -147,7 +150,7 @@ export async function applyCouponAction(
     return actionError(parsed.error.issues[0]?.message ?? "Kupon kodu gecersiz");
   }
 
-  const cart = await getCart();
+  const cart = await getOrCreateCart();
   const couponCode = parsed.data.couponCode;
 
   if (!couponCode) {

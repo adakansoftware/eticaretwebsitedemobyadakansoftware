@@ -1,11 +1,44 @@
 import { cookies } from "next/headers";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { getEffectiveUnitPrice } from "@/lib/commerce";
 
 const cartCookie = "adakan_cart";
 
-async function getOrCreateCartSessionId() {
+const cartInclude = {
+  items: {
+    include: {
+      product: {
+        include: {
+          images: true,
+          brand: true
+        }
+      }
+    }
+  }
+} satisfies Prisma.CartInclude;
+
+export type CartWithItems = Prisma.CartGetPayload<{ include: typeof cartInclude }>;
+
+function createEmptyCart(): CartWithItems {
+  return {
+    id: "",
+    userId: null,
+    sessionId: null,
+    couponCode: null,
+    createdAt: new Date(0),
+    updatedAt: new Date(0),
+    items: []
+  };
+}
+
+export async function readCartSessionId() {
+  const cookieStore = await cookies();
+  return cookieStore.get(cartCookie)?.value ?? null;
+}
+
+export async function getOrCreateCartSessionId() {
   const cookieStore = await cookies();
   let id = cookieStore.get(cartCookie)?.value;
 
@@ -15,6 +48,7 @@ async function getOrCreateCartSessionId() {
       httpOnly: true,
       sameSite: "lax",
       path: "/",
+      secure: process.env.NODE_ENV === "production",
       maxAge: 60 * 60 * 24 * 30
     });
   }
@@ -22,33 +56,71 @@ async function getOrCreateCartSessionId() {
   return id;
 }
 
-export async function getCart() {
-  const session = await getSession();
-  const sessionId = session ? undefined : await getOrCreateCartSessionId();
-  const where = session ? { userId: session.userId } : { sessionId };
-
+async function findOrCreateCart(where: { userId: string } | { sessionId: string }) {
   let cart = await prisma.cart.findFirst({
     where,
-    include: { items: { include: { product: { include: { images: true, brand: true } } } } }
+    include: cartInclude
   });
 
   if (!cart) {
     cart = await prisma.cart.create({
       data: where,
-      include: { items: { include: { product: { include: { images: true, brand: true } } } } }
+      include: cartInclude
     });
   }
 
   return cart;
 }
 
-export async function calculateCartTotals(cartId: string, couponCode?: string) {
+export async function getCart(): Promise<CartWithItems> {
+  const session = await getSession();
+
+  if (session) {
+    return findOrCreateCart({ userId: session.userId });
+  }
+
+  const sessionId = await readCartSessionId();
+  if (!sessionId) {
+    return createEmptyCart();
+  }
+
+  return findOrCreateCart({ sessionId });
+}
+
+export async function getOrCreateCart(): Promise<CartWithItems> {
+  const session = await getSession();
+
+  if (session) {
+    return findOrCreateCart({ userId: session.userId });
+  }
+
+  const sessionId = await getOrCreateCartSessionId();
+  return findOrCreateCart({ sessionId });
+}
+
+export async function calculateCartTotals(cartId?: string, couponCode?: string) {
+  if (!cartId) {
+    return {
+      subtotal: 0,
+      discountTotal: 0,
+      shippingTotal: 0,
+      grandTotal: 0
+    };
+  }
+
   const cart = await prisma.cart.findUnique({
     where: { id: cartId },
     include: { items: { include: { product: true } } }
   });
 
-  if (!cart) throw new Error("Sepet bulunamadi");
+  if (!cart) {
+    return {
+      subtotal: 0,
+      discountTotal: 0,
+      shippingTotal: 0,
+      grandTotal: 0
+    };
+  }
 
   let subtotal = 0;
   for (const item of cart.items) {
