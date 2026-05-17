@@ -89,3 +89,107 @@ export const productAdminSchema = z.object({
     .optional()
     .transform((value) => (value === "" || value === undefined ? undefined : value))
 });
+
+export const categoryAdminSchema = z.object({
+  name: z.string().min(2, "Kategori adi en az 2 karakter olmali"),
+  slug: z.string().optional().transform((value) => value?.trim() || undefined),
+  description: z.string().max(500).optional().transform((value) => value || undefined),
+  seoTitle: z.string().max(70).optional().transform((value) => value || undefined),
+  seoDescription: z.string().max(160).optional().transform((value) => value || undefined),
+  imageUrl: z
+    .string()
+    .url("Gecerli bir kategori gorsel URL gir")
+    .or(z.literal(""))
+    .optional()
+    .transform((value) => (value === "" || value === undefined ? undefined : value)),
+  isActive: z.coerce.boolean().default(true)
+});
+
+export const brandAdminSchema = z.object({
+  name: z.string().min(2, "Marka adi en az 2 karakter olmali"),
+  slug: z.string().optional().transform((value) => value?.trim() || undefined),
+  description: z.string().max(500).optional().transform((value) => value || undefined),
+  seoTitle: z.string().max(70).optional().transform((value) => value || undefined),
+  seoDescription: z.string().max(160).optional().transform((value) => value || undefined),
+  imageUrl: z
+    .string()
+    .url("Gecerli bir marka gorsel URL gir")
+    .or(z.literal(""))
+    .optional()
+    .transform((value) => (value === "" || value === undefined ? undefined : value)),
+  isActive: z.coerce.boolean().default(true)
+});
+
+export const couponAdminSchema = z
+  .object({
+    code: z
+      .string()
+      .min(3, "Kupon kodu en az 3 karakter olmali")
+      .max(32)
+      .transform((value) => value.trim().toUpperCase()),
+    type: z.enum(["PERCENTAGE", "FIXED_AMOUNT"]),
+    value: z.coerce.number().positive("Kupon degeri sifirdan buyuk olmali"),
+    minOrderAmount: z
+      .union([z.coerce.number().nonnegative(), z.literal("")])
+      .optional()
+      .transform((value) => (value === "" || value === undefined ? undefined : value)),
+    usageLimit: z
+      .union([z.coerce.number().int().positive(), z.literal("")])
+      .optional()
+      .transform((value) => (value === "" || value === undefined ? undefined : value)),
+    description: z.string().max(300).optional().transform((value) => value || undefined),
+    startsAt: z.string().optional().transform((value) => value || undefined),
+    endsAt: z.string().optional().transform((value) => value || undefined),
+    isActive: z.coerce.boolean().default(true)
+  })
+  .superRefine((value, ctx) => {
+    if (value.type === "PERCENTAGE" && value.value > 100) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["value"],
+        message: "Yuzdesel kupon 100'den buyuk olamaz"
+      });
+    }
+
+    if (value.startsAt && value.endsAt && new Date(value.endsAt) < new Date(value.startsAt)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["endsAt"],
+        message: "Bitis tarihi baslangic tarihinden once olamaz"
+      });
+    }
+  });
+
+export const bannerAdminSchema = z.object({
+  title: z.string().min(2, "Banner basligi en az 2 karakter olmali"),
+  subtitle: z.string().max(300).optional().transform((value) => value || undefined),
+  imageUrl: z.string().url("Gecerli bir banner gorsel URL gir"),
+  ctaLabel: z.string().max(40).optional().transform((value) => value || undefined),
+  ctaHref: z
+    .string()
+    .url("Gecerli bir banner linki gir")
+    .or(z.literal(""))
+    .optional()
+    .transform((value) => (value === "" || value === undefined ? undefined : value)),
+  sortOrder: z.coerce.number().int().min(0).default(0),
+  isActive: z.coerce.boolean().default(true)
+});
+
+export const orderAdminSchema = z.object({
+  orderId: z.string().min(1, "Siparis bulunamadi"),
+  status: z.enum([
+    "PENDING",
+    "WAITING_PAYMENT",
+    "PAID",
+    "PREPARING",
+    "SHIPPED",
+    "DELIVERED",
+    "CANCELLED",
+    "REFUNDED"
+  ]),
+  adminNote: z.string().max(1000).optional().transform((value) => value || undefined),
+  paymentStatus: z
+    .enum(["WAITING", "CONFIRMED", "REJECTED", "REFUNDED"])
+    .optional()
+    .transform((value) => value || undefined)
+});

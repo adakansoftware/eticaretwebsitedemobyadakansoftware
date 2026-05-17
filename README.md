@@ -26,7 +26,9 @@ This project is built as a serious commercial foundation rather than a throwaway
 - Account area with address management and order history
 - Admin dashboard with revenue, orders, customers, product count, low stock visibility, and recent orders
 - Admin product CRUD
-- Admin order status management and manual payment-friendly flow
+- Admin category, brand, coupon, and banner CRUD
+- Admin order list, order detail, status management, and manual payment-friendly flow
+- Admin inventory log visibility with filters and pagination
 - Site settings, seed data, banner, coupon, inventory log, wishlist, and review placeholder models
 
 ## Security model
@@ -185,19 +187,22 @@ Current admin scope:
 
 - Dashboard visibility
 - Product CRUD
-- Order listing and status updates
-- Customer overview
-- Site settings visibility
-
-Next good upgrade targets:
-
 - Category CRUD
 - Brand CRUD
 - Coupon CRUD
 - Banner CRUD
-- Inventory log page
-- Order detail page
-- Manual payment confirmation workflow improvements
+- Order listing, detail, and status updates
+- Inventory log visibility
+- Customer overview
+- Site settings visibility
+
+Admin management notes:
+
+- Categories and brands support slug, SEO fields, image URL, active/passive state, and safe delete rules
+- Coupons are always enforced server-side at checkout; admin only defines the rule set
+- Banners currently support title, subtitle, image URL, CTA, active state, and sort order
+- Order detail page shows customer snapshot, address snapshot, payment state, line items, totals, and internal admin note flow
+- Inventory log page currently lists product-based stock events; direct order relation is not stored in the current schema
 
 ## Production notes
 

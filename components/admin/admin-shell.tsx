@@ -4,7 +4,12 @@ import { ReactNode } from "react";
 const navigation = [
   { href: "/admin", label: "Dashboard" },
   { href: "/admin/products", label: "Urunler" },
+  { href: "/admin/categories", label: "Kategoriler" },
+  { href: "/admin/brands", label: "Markalar" },
   { href: "/admin/orders", label: "Siparisler" },
+  { href: "/admin/coupons", label: "Kuponlar" },
+  { href: "/admin/banners", label: "Bannerlar" },
+  { href: "/admin/inventory", label: "Envanter loglari" },
   { href: "/admin/customers", label: "Musteriler" },
   { href: "/admin/settings", label: "Site ayarlari" }
 ];
