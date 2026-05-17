@@ -1,23 +1,28 @@
 import Link from "next/link";
 import { ShoppingBag, UserRound } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 export async function Header() {
-  const user = await getCurrentUser();
+  const [user, settings] = await Promise.all([
+    getCurrentUser(),
+    prisma.siteSettings.findFirst({ select: { siteName: true } })
+  ]);
+  const siteName = settings?.siteName || "Adakan Commerce";
 
   return (
     <header className="sticky top-0 z-40 px-4 pt-4">
       <div className="mx-auto flex max-w-7xl items-center justify-between rounded-full border border-slate-200 bg-white/88 px-5 py-3 shadow-lg shadow-slate-900/5 backdrop-blur">
         <Link href="/" className="flex items-center gap-3">
           <span className="grid h-10 w-10 place-items-center rounded-full bg-emerald-900 text-sm font-black text-white">
-            AC
+            A
           </span>
           <span className="leading-tight">
             <span className="block text-[0.68rem] font-bold uppercase tracking-[0.28em] text-amber-700">
-              Guvenli alisveris
+              Güvenli alışveriş
             </span>
             <span className="block text-base font-black tracking-tight text-slate-950">
-              Adakan Commerce
+              {siteName}
             </span>
           </span>
         </Link>
@@ -27,13 +32,13 @@ export async function Header() {
             Ana sayfa
           </Link>
           <Link className="transition hover:text-emerald-800" href="/products">
-            Urunler
+            Ürünler
           </Link>
           <Link className="transition hover:text-emerald-800" href="/categories">
             Kategoriler
           </Link>
           <Link className="transition hover:text-emerald-800" href="/legal/iletisim">
-            Iletisim
+            İletişim
           </Link>
           {user ? (
             <Link className="transition hover:text-emerald-800" href="/account/wishlist">
@@ -61,7 +66,7 @@ export async function Header() {
 
           <Link
             href={user ? "/orders" : "/login"}
-            aria-label={user ? "Hesabim" : "Giris yap"}
+            aria-label={user ? "Hesabım" : "Giriş yap"}
             className="grid h-11 w-11 place-items-center rounded-full border border-slate-300 bg-white text-slate-900 transition hover:-translate-y-0.5 hover:border-amber-500 md:hidden"
           >
             <UserRound className="h-5 w-5" />

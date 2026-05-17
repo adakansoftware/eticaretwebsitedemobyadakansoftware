@@ -16,25 +16,22 @@ type FooterProps = {
 
 const quickLinks = [
   { href: "/", label: "Ana sayfa" },
-  { href: "/products", label: "Urunler" },
+  { href: "/products", label: "Ürünler" },
   { href: "/categories", label: "Kategoriler" },
   { href: "/cart", label: "Sepet" },
-  { href: "/orders", label: "Hesabim" }
+  { href: "/orders", label: "Hesabım" }
 ];
 
 const supportLinks = [
-  { href: "/legal/iletisim", label: "Iletisim" },
-  { href: "/legal/sikca-sorulan-sorular", label: "Sikca Sorulan Sorular" },
+  { href: "/legal/iletisim", label: "İletişim" },
   { href: "/legal/kargo-ve-teslimat", label: "Kargo ve Teslimat" },
-  { href: "/legal/iade-iptal-politikasi", label: "Iade ve Iptal Politikasi" },
-  { href: "/legal/mesafeli-satis-sozlesmesi", label: "Mesafeli Satis Sozlesmesi" }
+  { href: "/legal/iade-iptal-politikasi", label: "İade ve İptal Politikası" },
+  { href: "/legal/mesafeli-satis-sozlesmesi", label: "Mesafeli Satış Sözleşmesi" }
 ];
 
 const legalLinks = [
   { href: "/legal/kvkk", label: "KVKK" },
-  { href: "/legal/gizlilik-politikasi", label: "Gizlilik Politikasi" },
-  { href: "/legal/kullanim-kosullari", label: "Kullanim Kosullari" },
-  { href: "/legal/cerez-politikasi", label: "Cerez Politikasi" }
+  { href: "/legal/gizlilik-politikasi", label: "Gizlilik Politikası" }
 ];
 
 export function Footer({ settings }: FooterProps) {
@@ -54,42 +51,42 @@ export function Footer({ settings }: FooterProps) {
             {siteName}
           </p>
           <h2 className="mt-3 text-2xl font-black tracking-tight text-white">
-            Guvenli alisveris ve hizli destek deneyimi
+            Güvenli alışveriş ve hızlı destek deneyimi
           </h2>
           <p className="mt-4 max-w-sm text-sm leading-7 text-slate-300">
-            Telefon aksesuarlari, ofis urunleri ve secili teknoloji urunlerini guvenli odeme,
-            hizli teslimat ve erisilebilir destek yapisiyla bulusturuyoruz.
+            Telefon aksesuarları, ofis ürünleri ve seçili teknoloji ürünlerini güvenli
+            ödeme, hızlı teslimat ve erişilebilir destek yapısıyla buluşturuyoruz.
           </p>
         </div>
 
-        <FooterColumn title="Hizli erisim" links={quickLinks} />
-        <FooterColumn title="Musteri hizmetleri" links={supportLinks} />
+        <FooterColumn title="Hızlı erişim" links={quickLinks} />
+        <FooterColumn title="Müşteri hizmetleri" links={supportLinks} />
         <FooterColumn title="Yasal" links={legalLinks} />
 
         <div className="space-y-6">
           <div>
             <h3 className="text-sm font-bold uppercase tracking-[0.22em] text-white">
-              Iletisim
+              İletişim
             </h3>
             <div className="mt-4 space-y-3 text-sm text-slate-300">
               <p>{settings.contactPhone || "+90 555 000 00 00"}</p>
               <p>{settings.whatsappNumber || "+90 555 000 00 00"}</p>
               <p>{settings.email || "info@adakancommerce.com"}</p>
-              <p>{settings.address || "Van / Turkiye"}</p>
+              <p>{settings.address || "Van / Türkiye"}</p>
               <p>{settings.instagram || "instagram.com/adakansoftware"}</p>
             </div>
           </div>
 
           <div>
             <h3 className="text-sm font-bold uppercase tracking-[0.22em] text-white">
-              Guven ve odeme
+              Güven ve ödeme
             </h3>
             <div className="mt-4 flex flex-wrap gap-2">
               {[
-                "Guvenli alisveris",
-                "SSL korumali odeme",
+                "Güvenli alışveriş",
+                "SSL korumalı ödeme",
                 "EFT / Havale",
-                "Kapida odeme"
+                "Kapıda ödeme"
               ].map((item) => (
                 <span
                   key={item}
@@ -105,9 +102,7 @@ export function Footer({ settings }: FooterProps) {
 
       <div className="border-t border-white/10">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-5 text-sm text-slate-400 md:flex-row md:items-center md:justify-between">
-          <p>
-            © {new Date().getFullYear()} {siteName}. Tum haklari saklidir.
-          </p>
+          <p>© 2026 {siteName}. Tüm hakları saklıdır.</p>
           <p>Powered by Adakan Software</p>
         </div>
       </div>

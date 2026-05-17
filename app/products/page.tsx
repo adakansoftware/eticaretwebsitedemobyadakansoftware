@@ -30,8 +30,8 @@ const sortOptions = [
 ] as const;
 
 export const metadata: Metadata = {
-  title: "Urunler",
-  description: "Telefon aksesuarlari, ofis urunleri ve secili kategorilerdeki urunleri kesfedin."
+  title: "Ürünler",
+  description: "Telefon aksesuarları, ofis ürünleri ve seçili kategorilerdeki ürünleri keşfedin."
 };
 
 function buildQueryString(
@@ -121,14 +121,14 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-2xl">
               <p className="text-[0.72rem] font-bold uppercase tracking-[0.34em] text-amber-700">
-                Urun vitrini
+                Ürün kataloğu
               </p>
               <h1 className="mt-3 text-4xl font-black tracking-tight text-slate-950 md:text-5xl">
-                Urunler
+                Ürünler
               </h1>
               <p className="mt-3 text-base leading-7 text-slate-600">
-                Kategori, marka, stok ve fiyat ekseninde daha ciddi bir vitrin deneyimi.
-                Arama, filtre ve siralama ayarlari tek katalog akisinda calisir.
+                Kategori, marka, stok ve fiyat odaklı filtrelerle ihtiyaç duyduğunuz
+                ürünlere hızlıca ulaşın.
               </p>
             </div>
 
@@ -136,7 +136,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
               <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
                 name="q"
-                placeholder="Urun, SKU veya aciklama ara..."
+                placeholder="Ürün, SKU veya açıklama ara..."
                 className="h-12 w-full rounded-full border border-slate-200 bg-white pl-11 pr-5 text-sm outline-none transition focus:border-emerald-700"
                 defaultValue={q}
               />
@@ -150,7 +150,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                   Filtreler
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  Aktif katalog, ticari odakli filtreleme ve hizli arama ile sunuluyor.
+                  Aktif katalog, hızlı arama ve sade filtreleme ile sunuluyor.
                 </p>
               </div>
 
@@ -162,7 +162,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                     defaultValue={category ?? ""}
                     className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-emerald-700"
                   >
-                    <option value="">Tum kategoriler</option>
+                    <option value="">Tüm kategoriler</option>
                     {categories.map((item) => (
                       <option key={item.id} value={item.slug}>
                         {item.name}
@@ -178,7 +178,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                     defaultValue={brand ?? ""}
                     className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-emerald-700"
                   >
-                    <option value="">Tum markalar</option>
+                    <option value="">Tüm markalar</option>
                     {brands.map((item) => (
                       <option key={item.id} value={item.slug}>
                         {item.name}
@@ -194,7 +194,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                     defaultValue={stock ?? ""}
                     className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-emerald-700"
                   >
-                    <option value="">Tum urunler</option>
+                    <option value="">Tüm ürünler</option>
                     <option value="in-stock">Sadece stokta olanlar</option>
                   </select>
                 </div>
@@ -221,7 +221,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                     Uygula
                   </Button>
                   <Button asChild variant="outline" className="flex-1">
-                    <Link href="/products">Sifirla</Link>
+                    <Link href="/products">Sıfırla</Link>
                   </Button>
                 </div>
               </form>
@@ -231,7 +231,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
               <div className="flex flex-col gap-3 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm md:flex-row md:items-center md:justify-between">
                 <div>
                   <p className="text-sm font-semibold text-slate-600">
-                    {pagination.totalItems} aktif urun bulundu
+                    {pagination.totalItems} aktif ürün bulundu
                   </p>
                   <p className="mt-1 text-sm text-slate-500">
                     Sayfa {pagination.page} / {pagination.totalPages}
@@ -265,6 +265,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
               ) : (
                 <div className="mt-6 rounded-[2rem] border border-dashed border-slate-300 bg-slate-50 p-8 text-slate-600">
                   Bu filtre kombinasyonuyla eslesen aktif urun bulunamadi.
+                  
                 </div>
               )}
 
@@ -285,7 +286,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                   </Button>
 
                   <p className="text-sm font-semibold text-slate-600">
-                    {pagination.page}. sayfadasin
+                    {pagination.page}. sayfadasınız
                   </p>
 
                   <Button

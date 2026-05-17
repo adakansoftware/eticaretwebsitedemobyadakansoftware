@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
   title: "Kategoriler",
-  description: "Aktif kategorileri inceleyerek ihtiyaciniza uygun urunlere hizla ulasin."
+  description: "Aktif kategorileri inceleyerek ihtiyacınıza uygun ürünlere hızla ulaşın."
 };
 
 export default async function CategoriesPage() {
@@ -30,15 +30,12 @@ export default async function CategoriesPage() {
       <main className="mx-auto max-w-7xl px-4 py-10">
         <section className="rounded-[2.6rem] border border-slate-200 bg-white/85 p-6 shadow-[0_26px_90px_rgba(15,23,42,0.06)] backdrop-blur md:p-8">
           <div className="max-w-3xl">
-            <p className="text-[0.72rem] font-bold uppercase tracking-[0.34em] text-amber-700">
-              Kategori vitrini
-            </p>
             <h1 className="mt-3 text-4xl font-black tracking-tight text-slate-950 md:text-5xl">
-              Tum kategoriler
+              Kategoriler
             </h1>
             <p className="mt-3 text-base leading-7 text-slate-600">
-              Aktif kategorileri inceleyerek urunleri daha hizli kesfedebilir, ilgilendigin
-              vitrin alanina dogrudan gidebilirsin.
+              Aktif kategorileri inceleyerek size uygun ürünlere hızlıca ulaşabilir,
+              ilgilendiğiniz ürün grubunu doğrudan açabilirsiniz.
             </p>
           </div>
 
@@ -74,16 +71,16 @@ export default async function CategoriesPage() {
                         {category.name}
                       </h2>
                       <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600">
-                        {category.description ?? "Bu kategori icin secilmis urunleri inceleyin."}
+                        {category.description ?? "Bu kategori için seçili ürünleri inceleyin."}
                       </p>
                     </div>
 
                     <div className="flex items-center justify-between">
                       <span className="rounded-full bg-slate-100 px-3 py-2 text-xs font-bold uppercase tracking-[0.2em] text-slate-700">
-                        {category._count.products} urun
+                        {category._count.products} ürün
                       </span>
                       <span className="text-sm font-bold text-emerald-900 transition group-hover:translate-x-1">
-                        Kategoriyi ac
+                        Kategoriyi aç
                       </span>
                     </div>
                   </div>
@@ -92,7 +89,7 @@ export default async function CategoriesPage() {
             </div>
           ) : (
             <div className="mt-8 rounded-[2rem] border border-dashed border-slate-300 bg-slate-50 p-8 text-slate-600">
-              Henuz yayinda aktif kategori yok.
+              Henüz aktif kategori bulunmuyor.
             </div>
           )}
         </section>
