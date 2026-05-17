@@ -33,9 +33,14 @@ export async function Header() {
             Iletisim
           </Link>
           {user ? (
-            <Link className="transition hover:text-emerald-800" href="/account/addresses">
-              Adreslerim
-            </Link>
+            <>
+              <Link className="transition hover:text-emerald-800" href="/account/wishlist">
+                Favorilerim
+              </Link>
+              <Link className="transition hover:text-emerald-800" href="/account/addresses">
+                Adreslerim
+              </Link>
+            </>
           ) : null}
         </nav>
 

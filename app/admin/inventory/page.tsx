@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { adjustInventoryAction } from "@/lib/actions/admin-inventory-actions";
 import { DEFAULT_PAGE_SIZE, getPagination, getPaginationMeta, getPageValue } from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
 
@@ -37,7 +40,11 @@ export default async function AdminInventoryPage({ searchParams }: InventoryPage
       : {})
   };
 
-  const [totalItems, logs] = await Promise.all([
+  const [products, totalItems, logs] = await Promise.all([
+    prisma.product.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, sku: true, stock: true }
+    }),
     prisma.inventoryLog.count({ where }),
     prisma.inventoryLog.findMany({
       where,
@@ -54,35 +61,78 @@ export default async function AdminInventoryPage({ searchParams }: InventoryPage
       <section>
         <h1 className="text-4xl font-black tracking-tight text-white">Envanter loglari</h1>
         <p className="mt-3 max-w-3xl text-base leading-7 text-slate-300">
-          Stok hareketlerini urun, SKU ve sebep bazinda takip et. Mevcut veri modelinde dogrudan
-          order relation tutulmadigi icin ilgili akisi not alanindan gorursun.
+          Stok hareketlerini urun, SKU ve sebep bazinda takip et. Manuel stok duzeltmeleri burada
+          transaction ile kayda gecer.
         </p>
       </section>
 
-      <section className="rounded-[2rem] border border-white/10 bg-white/5 p-6">
-        <form className="grid gap-4 lg:grid-cols-[1fr_240px_auto]">
-          <input
-            name="q"
-            defaultValue={q}
-            placeholder="Urun adi veya SKU ara"
-            className="h-11 rounded-2xl border border-white/10 bg-slate-950 px-4 text-sm text-white outline-none"
-          />
-          <select
-            name="reason"
-            defaultValue={reason ?? ""}
-            className="h-11 rounded-2xl border border-white/10 bg-slate-950 px-4 text-sm text-white"
-          >
-            <option value="">Tum sebepler</option>
-            {reasonOptions.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
-          <button className="rounded-full bg-emerald-500 px-5 py-3 text-sm font-bold text-slate-950">
-            Filtrele
-          </button>
-        </form>
+      <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+        <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6">
+          <h2 className="text-xl font-black text-white">Manuel stok duzelt</h2>
+          <form action={adjustInventoryAction} className="mt-6 grid gap-4">
+            <select
+              name="productId"
+              className="h-11 rounded-2xl border border-white/10 bg-slate-950 px-4 text-sm text-white"
+              required
+            >
+              <option value="">Urun sec</option>
+              {products.map((product) => (
+                <option key={product.id} value={product.id}>
+                  {product.name} · {product.sku} · {product.stock} stok
+                </option>
+              ))}
+            </select>
+
+            <div className="grid gap-4 md:grid-cols-3">
+              <select
+                name="direction"
+                className="h-11 rounded-2xl border border-white/10 bg-slate-950 px-4 text-sm text-white"
+              >
+                <option value="INCREASE">Stok artir</option>
+                <option value="DECREASE">Stok azalt</option>
+              </select>
+              <Input name="quantity" type="number" min={1} placeholder="Adet" required />
+              <select
+                name="reason"
+                className="h-11 rounded-2xl border border-white/10 bg-slate-950 px-4 text-sm text-white"
+              >
+                <option value="ADMIN_ADJUSTMENT">Manuel duzeltme</option>
+                <option value="RETURNED">Iade / geri gelen urun</option>
+              </select>
+            </div>
+
+            <textarea
+              name="note"
+              placeholder="Neden stok degisikligi yapildigini acikla"
+              className="min-h-24 w-full rounded-2xl border border-white/10 bg-slate-950 p-4 text-sm text-white outline-none ring-white/10 transition focus:ring-4"
+              required
+            />
+
+            <Button className="w-full md:w-auto">Envanteri guncelle</Button>
+          </form>
+        </div>
+
+        <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6">
+          <h2 className="text-xl font-black text-white">Log filtreleri</h2>
+          <form className="mt-6 grid gap-4 lg:grid-cols-[1fr_240px_auto]">
+            <Input name="q" defaultValue={q} placeholder="Urun adi veya SKU ara" />
+            <select
+              name="reason"
+              defaultValue={reason ?? ""}
+              className="h-11 rounded-2xl border border-white/10 bg-slate-950 px-4 text-sm text-white"
+            >
+              <option value="">Tum sebepler</option>
+              {reasonOptions.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
+            <button className="rounded-full bg-emerald-500 px-5 py-3 text-sm font-bold text-slate-950">
+              Filtrele
+            </button>
+          </form>
+        </div>
       </section>
 
       <section className="grid gap-4">

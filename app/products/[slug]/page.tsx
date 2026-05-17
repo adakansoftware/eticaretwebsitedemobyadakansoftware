@@ -1,9 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronRight, ShieldCheck, Truck } from "lucide-react";
+import { ChevronRight, ShieldCheck, Star, Truck } from "lucide-react";
 import { notFound } from "next/navigation";
 import { Header } from "@/components/storefront/header";
 import { AddToCartButton } from "@/components/storefront/add-to-cart-button";
+import { WishlistButton } from "@/components/storefront/wishlist-button";
+import { getCurrentUser } from "@/lib/auth";
 import { getDiscountPercentage, getEffectiveUnitPrice } from "@/lib/commerce";
 import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/utils";
@@ -14,10 +16,20 @@ type ProductDetailPageProps = {
 
 export default async function ProductDetailPage({ params }: ProductDetailPageProps) {
   const { slug } = await params;
+  const user = await getCurrentUser();
 
   const product = await prisma.product.findUnique({
     where: { slug },
-    include: { images: true, category: true, brand: true }
+    include: {
+      images: true,
+      category: true,
+      brand: true,
+      reviews: {
+        where: { status: "APPROVED" },
+        include: { user: true },
+        orderBy: { createdAt: "desc" }
+      }
+    }
   });
 
   if (!product || !product.isActive) notFound();
@@ -25,6 +37,18 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
   const image =
     product.images[0]?.url ??
     "https://images.unsplash.com/photo-1523275335684-37898b6baf30";
+  const isWishlisted = user
+    ? Boolean(
+        await prisma.wishlistItem.findUnique({
+          where: {
+            userId_productId: {
+              userId: user.id,
+              productId: product.id
+            }
+          }
+        })
+      )
+    : false;
   const effectivePrice = getEffectiveUnitPrice(product);
   const discountPercentage = getDiscountPercentage(
     product.salePrice ?? product.price,
@@ -73,6 +97,16 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                 </p>
               ) : null}
             </div>
+            <div className="mt-4 flex items-center gap-2 text-sm text-slate-600">
+              <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+              {product.ratingCount > 0 ? (
+                <span>
+                  {Number(product.ratingAverage).toFixed(1)} puan · {product.ratingCount} yorum
+                </span>
+              ) : (
+                <span>Ilk degerlendiren sen olabilirsin</span>
+              )}
+            </div>
             <p className="mt-6 text-base leading-8 text-slate-600">{product.description}</p>
 
             <div className="mt-8 grid gap-3 sm:grid-cols-2">
@@ -108,9 +142,58 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
               </span>
             </div>
 
-            <div className="mt-8 max-w-sm">
+            <div className="mt-8 grid max-w-md gap-3">
               <AddToCartButton productId={product.id} />
+              <WishlistButton
+                productId={product.id}
+                productSlug={product.slug}
+                isAuthenticated={Boolean(user)}
+                isWishlisted={isWishlisted}
+              />
             </div>
+          </div>
+        </section>
+
+        <section className="mt-8 rounded-[2.4rem] border border-slate-200 bg-white/85 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.06)] backdrop-blur md:p-8">
+          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="text-[0.72rem] font-bold uppercase tracking-[0.3em] text-amber-700">
+                Review section
+              </p>
+              <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-950">
+                Musteri yorumlari
+              </h2>
+            </div>
+            <p className="text-sm text-slate-500">
+              Yalnizca onayli yorumlar vitrinde gorunur.
+            </p>
+          </div>
+
+          <div className="mt-6 grid gap-4">
+            {product.reviews.length > 0 ? (
+              product.reviews.map((review) => (
+                <article key={review.id} className="rounded-[1.6rem] border border-slate-200 bg-slate-50 p-5">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <h3 className="text-lg font-black text-slate-950">
+                        {review.title ?? "Musteri deneyimi"}
+                      </h3>
+                      <p className="mt-2 text-sm leading-7 text-slate-600">
+                        {review.body ?? "Bu yorum icin detay metni yok."}
+                      </p>
+                    </div>
+                    <div className="text-left md:text-right">
+                      <p className="font-bold text-slate-950">{review.user.name}</p>
+                      <p className="mt-1 text-sm text-slate-500">{review.rating} / 5 puan</p>
+                    </div>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <div className="rounded-[1.6rem] border border-dashed border-slate-300 bg-slate-50 p-6 text-slate-600">
+                Henuz onayli yorum yok. Admin panelinden moderasyon yapildikca bu alan dolacak.
+              </div>
+            )}
           </div>
         </section>
       </main>

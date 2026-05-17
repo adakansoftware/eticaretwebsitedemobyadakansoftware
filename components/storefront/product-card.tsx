@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { Star } from "lucide-react";
 import { getDiscountPercentage, getEffectiveUnitPrice } from "@/lib/commerce";
 import { formatPrice } from "@/lib/utils";
 import type { Product, ProductImage } from "@prisma/client";
@@ -56,6 +57,16 @@ export function ProductCard({ product }: Props) {
               {product.shortDescription ??
                 "Premium deneyim icin secilmis, operasyonla uyumlu urun yapisi."}
             </p>
+            <div className="flex items-center gap-2 text-sm text-slate-500">
+              <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+              {product.ratingCount > 0 ? (
+                <span>
+                  {Number(product.ratingAverage).toFixed(1)} · {product.ratingCount} degerlendirme
+                </span>
+              ) : (
+                <span>Degerlendirme bekleniyor</span>
+              )}
+            </div>
           </div>
 
           <div className="flex items-end justify-between gap-3">

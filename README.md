@@ -29,6 +29,9 @@ This project is built as a serious commercial foundation rather than a throwaway
 - Admin category, brand, coupon, and banner CRUD
 - Admin order list, order detail, status management, and manual payment-friendly flow
 - Admin inventory log visibility with filters and pagination
+- Admin site settings edit form
+- Admin review moderation
+- User wishlist page and product-level wishlist actions
 - Site settings, seed data, banner, coupon, inventory log, wishlist, and review placeholder models
 
 ## Security model
@@ -202,7 +205,11 @@ Admin management notes:
 - Coupons are always enforced server-side at checkout; admin only defines the rule set
 - Banners currently support title, subtitle, image URL, CTA, active state, and sort order
 - Order detail page shows customer snapshot, address snapshot, payment state, line items, totals, and internal admin note flow
-- Inventory log page currently lists product-based stock events; direct order relation is not stored in the current schema
+- Site settings page now supports editing communication, logistics, branding, and EFT fields
+- Inventory log page lists product-based stock events and includes manual stock adjustment flow
+- Order cancellation and refund currently restore stock once and write inventory logs; refund is treated as returned goods for simplicity
+- Review moderation updates approved review status and synchronizes product rating counters
+- Wishlist is user-scoped and available from account navigation and product detail pages
 
 ## Production notes
 

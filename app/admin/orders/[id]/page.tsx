@@ -144,6 +144,17 @@ export default async function AdminOrderDetailPage({ params }: OrderDetailPagePr
                   </p>
                 </div>
               ) : null}
+              {order.inventoryRestoredAt ? (
+                <div className="rounded-[1.5rem] border border-white/10 bg-slate-950/55 p-4">
+                  <p className="font-bold text-white">Stok geri yuklendi</p>
+                  <p className="mt-1 text-slate-300">
+                    {new Intl.DateTimeFormat("tr-TR", {
+                      dateStyle: "medium",
+                      timeStyle: "short"
+                    }).format(order.inventoryRestoredAt)}
+                  </p>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>

@@ -395,6 +395,14 @@ async function main() {
     }
   });
 
+  await prisma.product.update({
+    where: { id: createdProducts[0].id },
+    data: {
+      ratingAverage: 5,
+      ratingCount: 1
+    }
+  });
+
   await prisma.wishlistItem.create({
     data: {
       userId: customer.id,

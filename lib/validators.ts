@@ -193,3 +193,55 @@ export const orderAdminSchema = z.object({
     .optional()
     .transform((value) => value || undefined)
 });
+
+export const siteSettingsAdminSchema = z.object({
+  siteName: z.string().min(2, "Site adi en az 2 karakter olmali"),
+  logoUrl: z
+    .string()
+    .url("Gecerli bir logo URL gir")
+    .or(z.literal(""))
+    .optional()
+    .transform((value) => (value === "" || value === undefined ? undefined : value)),
+  contactPhone: z.string().max(40).optional().transform((value) => value || undefined),
+  whatsappNumber: z.string().max(40).optional().transform((value) => value || undefined),
+  email: z.string().email("Gecerli e-posta gir").optional().or(z.literal("")).transform((value) => value || undefined),
+  address: z.string().max(500).optional().transform((value) => value || undefined),
+  instagram: z
+    .string()
+    .url("Gecerli bir Instagram URL gir")
+    .or(z.literal(""))
+    .optional()
+    .transform((value) => (value === "" || value === undefined ? undefined : value)),
+  primaryColor: z
+    .string()
+    .regex(/^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{3})$/, "Gecerli bir HEX renk gir")
+    .or(z.literal(""))
+    .optional()
+    .transform((value) => (value === "" || value === undefined ? undefined : value)),
+  shippingFee: z.coerce.number().min(0, "Kargo ucreti negatif olamaz"),
+  freeShippingThreshold: z
+    .union([z.coerce.number().min(0), z.literal("")])
+    .optional()
+    .transform((value) => (value === "" || value === undefined ? undefined : value)),
+  bankAccountInfo: z.string().max(1000).optional().transform((value) => value || undefined),
+  checkoutMessage: z.string().max(500).optional().transform((value) => value || undefined)
+});
+
+export const inventoryAdjustmentSchema = z.object({
+  productId: z.string().min(1, "Urun secilmedi"),
+  direction: z.enum(["INCREASE", "DECREASE"]),
+  quantity: z.coerce.number().int().min(1, "Adet en az 1 olmali"),
+  reason: z.enum(["ADMIN_ADJUSTMENT", "RETURNED"]),
+  note: z.string().min(3, "Aciklayici bir not gir").max(500)
+});
+
+export const reviewAdminFilterSchema = z.object({
+  rating: z.string().optional(),
+  status: z.enum(["PENDING", "APPROVED", "REJECTED"]).optional(),
+  q: z.string().optional()
+});
+
+export const reviewStatusSchema = z.object({
+  reviewId: z.string().min(1, "Yorum bulunamadi"),
+  status: z.enum(["PENDING", "APPROVED", "REJECTED"])
+});

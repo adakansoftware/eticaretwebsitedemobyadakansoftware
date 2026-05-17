@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { orderAdminSchema } from "@/lib/validators";
 
 const blockedRollbackStatuses = new Set(["CANCELLED", "REFUNDED"]);
+const rollbackStatuses = new Set(["CANCELLED", "REFUNDED"]);
 
 function ensureStatusTransition(currentStatus: string, nextStatus: string) {
   if (currentStatus === nextStatus) return;
@@ -32,7 +33,7 @@ export async function updateAdminOrderAction(formData: FormData) {
 
   const order = await prisma.order.findUnique({
     where: { id: parsed.data.orderId },
-    include: { payment: true }
+    include: { payment: true, items: true }
   });
 
   if (!order) throw new Error("Siparis bulunamadi");
@@ -40,11 +41,49 @@ export async function updateAdminOrderAction(formData: FormData) {
   ensureStatusTransition(order.status, parsed.data.status);
 
   await prisma.$transaction(async (tx) => {
+    let inventoryRestoredAt = order.inventoryRestoredAt;
+
+    if (
+      order.status !== parsed.data.status &&
+      rollbackStatuses.has(parsed.data.status) &&
+      !order.inventoryRestoredAt
+    ) {
+      for (const item of order.items) {
+        const product = await tx.product.findUnique({
+          where: { id: item.productId }
+        });
+
+        if (!product) continue;
+
+        const nextStock = product.stock + item.quantity;
+        await tx.product.update({
+          where: { id: product.id },
+          data: { stock: nextStock }
+        });
+
+        await tx.inventoryLog.create({
+          data: {
+            productId: product.id,
+            change: item.quantity,
+            stockAfter: nextStock,
+            reason: parsed.data.status === "REFUNDED" ? "RETURNED" : "ORDER_CANCELLED",
+            note:
+              parsed.data.status === "REFUNDED"
+                ? `Iade ile stok geri yuklendi: ${order.orderNumber}`
+                : `Siparis iptali ile stok geri yuklendi: ${order.orderNumber}`
+          }
+        });
+      }
+
+      inventoryRestoredAt = new Date();
+    }
+
     await tx.order.update({
       where: { id: parsed.data.orderId },
       data: {
         status: parsed.data.status,
-        adminNote: parsed.data.adminNote ?? null
+        adminNote: parsed.data.adminNote ?? null,
+        inventoryRestoredAt
       }
     });
 
@@ -53,7 +92,8 @@ export async function updateAdminOrderAction(formData: FormData) {
         where: { orderId: parsed.data.orderId },
         data: {
           status: parsed.data.paymentStatus,
-          confirmedAt: parsed.data.paymentStatus === "CONFIRMED" ? new Date() : order.payment.confirmedAt
+          confirmedAt:
+            parsed.data.paymentStatus === "CONFIRMED" ? new Date() : order.payment.confirmedAt
         }
       });
     }
