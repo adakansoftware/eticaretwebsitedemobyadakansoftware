@@ -24,6 +24,8 @@ export async function updateOrderStatusAction(formData: FormData) {
   const orderId = String(formData.get("orderId") ?? "");
   const status = String(formData.get("status") ?? "");
   const adminNote = String(formData.get("adminNote") ?? "");
+  const paymentStatus = String(formData.get("paymentStatus") ?? "");
+
   const allowedStatuses = [
     "PENDING",
     "WAITING_PAYMENT",
@@ -39,10 +41,24 @@ export async function updateOrderStatusAction(formData: FormData) {
   if (!allowedStatuses.includes(status)) throw new Error("Gecersiz siparis durumu");
 
   await requireAdmin();
-  await prisma.order.update({
-    where: { id: orderId },
-    data: { status: status as any, adminNote: adminNote || null }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.order.update({
+      where: { id: orderId },
+      data: { status: status as any, adminNote: adminNote || null }
+    });
+
+    if (paymentStatus) {
+      await tx.payment.updateMany({
+        where: { orderId },
+        data: {
+          status: paymentStatus as any,
+          confirmedAt: paymentStatus === "CONFIRMED" ? new Date() : null
+        }
+      });
+    }
   });
+
   revalidatePath("/admin/orders");
 }
 

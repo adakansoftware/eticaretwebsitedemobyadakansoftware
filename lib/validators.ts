@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 export const registerSchema = z.object({
-  name: z.string().min(2, "Ad en az 2 karakter olmalı"),
-  email: z.string().email("Geçerli e-posta gir"),
-  password: z.string().min(8, "Şifre en az 8 karakter olmalı")
+  name: z.string().min(2, "Ad en az 2 karakter olmali"),
+  email: z.string().email("Gecerli e-posta gir"),
+  password: z.string().min(8, "Sifre en az 8 karakter olmali")
 });
 
 export const loginSchema = z.object({
@@ -16,10 +16,32 @@ export const cartQuantitySchema = z.object({
   quantity: z.number().int().min(1).max(99)
 });
 
+export const cartItemIdSchema = z.object({
+  itemId: z.string().min(1, "Sepet urunu bulunamadi")
+});
+
+export const cartItemUpdateSchema = z.object({
+  itemId: z.string().min(1, "Sepet urunu bulunamadi"),
+  quantity: z.coerce.number().int().min(1, "Adet en az 1 olmali").max(99, "En fazla 99 adet secilebilir")
+});
+
+export const couponCodeSchema = z.object({
+  couponCode: z
+    .string()
+    .max(32, "Kupon kodu en fazla 32 karakter olabilir")
+    .optional()
+    .transform((value) => value?.trim().toUpperCase() || undefined)
+});
+
 export const checkoutSchema = z.object({
   addressId: z.string().min(1),
   paymentMethod: z.enum(["BANK_TRANSFER", "CASH_ON_DELIVERY"]),
-  customerNote: z.string().max(500).optional()
+  customerNote: z.string().max(500).optional(),
+  couponCode: z
+    .string()
+    .max(32)
+    .optional()
+    .transform((value) => value?.trim() || undefined)
 });
 
 export const addressSchema = z.object({
@@ -41,13 +63,21 @@ export const productAdminSchema = z.object({
   slug: z.string().min(2),
   description: z.string().min(10),
   shortDescription: z.string().optional().transform((value) => value || undefined),
+  seoTitle: z.string().max(70).optional().transform((value) => value || undefined),
+  seoDescription: z.string().max(160).optional().transform((value) => value || undefined),
+  barcode: z.string().max(64).optional().transform((value) => value || undefined),
   price: z.coerce.number().positive(),
+  salePrice: z
+    .union([z.coerce.number().positive(), z.literal("")])
+    .optional()
+    .transform((value) => (value === "" || value === undefined ? undefined : value)),
   compareAtPrice: z
     .union([z.coerce.number().positive(), z.literal("")])
     .optional()
     .transform((value) => (value === "" || value === undefined ? undefined : value)),
   sku: z.string().min(2),
   stock: z.coerce.number().int().min(0),
+  lowStockThreshold: z.coerce.number().int().min(0).default(5),
   isActive: z.coerce.boolean().default(true),
   isFeatured: z.coerce.boolean().default(false),
   categoryId: z.string().min(1),

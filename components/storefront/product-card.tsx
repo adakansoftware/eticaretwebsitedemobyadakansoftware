@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { getDiscountPercentage, getEffectiveUnitPrice } from "@/lib/commerce";
 import { formatPrice } from "@/lib/utils";
 import type { Product, ProductImage } from "@prisma/client";
 import { AddToCartButton } from "@/components/storefront/add-to-cart-button";
@@ -10,11 +11,16 @@ export function ProductCard({ product }: Props) {
   const image =
     product.images[0]?.url ??
     "https://images.unsplash.com/photo-1523275335684-37898b6baf30";
+  const effectivePrice = getEffectiveUnitPrice(product);
+  const discountPercentage = getDiscountPercentage(
+    product.salePrice ?? product.price,
+    product.compareAtPrice
+  );
 
   return (
-    <div className="group overflow-hidden rounded-[2rem] border border-slate-200 bg-white/90 shadow-lg shadow-slate-900/5 transition duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-slate-900/10">
+    <article className="group overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white/90 shadow-[0_22px_55px_rgba(15,23,42,0.06)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_28px_70px_rgba(15,23,42,0.12)]">
       <Link href={`/products/${product.slug}`} className="block">
-        <div className="relative aspect-square overflow-hidden bg-slate-100">
+        <div className="relative aspect-[4/4.4] overflow-hidden bg-gradient-to-br from-stone-100 via-stone-50 to-amber-50">
           <Image
             src={image}
             alt={product.name}
@@ -22,35 +28,51 @@ export function ProductCard({ product }: Props) {
             className="object-cover transition duration-500 group-hover:scale-105"
           />
           <div className="absolute inset-x-4 top-4 flex items-center justify-between">
-            <span className="rounded-full bg-white/90 px-3 py-1 text-[0.68rem] font-bold uppercase tracking-[0.22em] text-slate-900 backdrop-blur">
-              Featured
+            <span className="rounded-full border border-white/60 bg-white/85 px-3 py-1 text-[0.66rem] font-bold uppercase tracking-[0.22em] text-slate-900 backdrop-blur">
+              Curated
             </span>
-            <span className="rounded-full bg-emerald-900 px-3 py-1 text-xs font-bold text-white">
-              {product.stock} stok
-            </span>
+            <div className="flex items-center gap-2">
+              {discountPercentage > 0 ? (
+                <span className="rounded-full bg-amber-500 px-3 py-1 text-xs font-bold text-slate-950">
+                  %{discountPercentage}
+                </span>
+              ) : null}
+              <span className="rounded-full bg-emerald-900/92 px-3 py-1 text-xs font-bold text-white shadow-lg shadow-emerald-950/20">
+                {product.stock} stok
+              </span>
+            </div>
           </div>
         </div>
 
-        <div className="p-5">
-          <p className="text-[0.68rem] font-bold uppercase tracking-[0.24em] text-amber-700">
-            Adakan Select
-          </p>
-          <h3 className="mt-2 line-clamp-2 text-xl font-black tracking-tight text-slate-950">
-            {product.name}
-          </h3>
-          <p className="mt-3 text-sm leading-6 text-slate-600">
-            {product.shortDescription ?? "Guncel koleksiyondan secilmis premium urun."}
-          </p>
-          <div className="mt-5 flex items-end justify-between gap-3">
+        <div className="space-y-4 p-5">
+          <div className="space-y-2">
+            <p className="text-[0.68rem] font-bold uppercase tracking-[0.26em] text-amber-700">
+              Featured selection
+            </p>
+            <h3 className="line-clamp-2 text-xl font-black tracking-tight text-slate-950">
+              {product.name}
+            </h3>
+            <p className="line-clamp-2 text-sm leading-6 text-slate-600">
+              {product.shortDescription ??
+                "Premium deneyim icin secilmis, operasyonla uyumlu urun yapisi."}
+            </p>
+          </div>
+
+          <div className="flex items-end justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Satis fiyati
+              <p className="text-[0.68rem] font-bold uppercase tracking-[0.22em] text-slate-500">
+                Fiyat
               </p>
-              <p className="mt-1 text-2xl font-black text-slate-950">
-                {formatPrice(product.price.toString())}
+              <p className="mt-1 text-2xl font-black tracking-tight text-slate-950">
+                {formatPrice(effectivePrice)}
               </p>
+              {product.compareAtPrice ? (
+                <p className="mt-1 text-sm text-slate-400 line-through">
+                  {formatPrice(product.compareAtPrice.toString())}
+                </p>
+              ) : null}
             </div>
-            <span className="rounded-full border border-slate-200 px-3 py-2 text-xs font-bold uppercase tracking-[0.16em] text-emerald-900">
+            <span className="rounded-full border border-slate-200 px-3 py-2 text-[0.68rem] font-bold uppercase tracking-[0.2em] text-emerald-900">
               Hazir sevk
             </span>
           </div>
@@ -60,6 +82,6 @@ export function ProductCard({ product }: Props) {
       <div className="px-5 pb-5">
         <AddToCartButton productId={product.id} />
       </div>
-    </div>
+    </article>
   );
 }

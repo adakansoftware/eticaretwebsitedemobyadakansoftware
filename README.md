@@ -1,52 +1,57 @@
 # Adakan Commerce Core
 
-Turkish-first, reusable e-commerce MVP foundation for small and medium businesses.
+Turkish-first, reusable e-commerce core for small and medium businesses.
 
-Built from the requested brief: Next.js App Router, TypeScript, PostgreSQL, Prisma, Tailwind CSS, shadcn-style UI primitives, Zod validation, server-side auth/roles, admin/customer separation, secure cart and checkout rules.
+This project is built as a serious commercial foundation rather than a throwaway demo. It keeps storefront, auth, admin, cart, checkout, payment placeholders, and inventory operations in one maintainable Next.js codebase.
 
-## What is included
+## Stack
 
-- Public storefront: home, product list, product detail, category, cart, checkout, legal pages
-- User system: register, login, logout foundation, order history
-- Admin panel: dashboard, product list, order list, customer list, settings overview
-- Prisma schema for users, addresses, products, images, variants, categories, brands, cart, orders, coupons, banners, settings, payments, inventory logs
-- JWT cookie auth with roles: USER and ADMIN
-- Admin protection in middleware and server logic
-- Server-side cart total calculation
-- Server-side stock and activity checks
-- Manual first-version payments: bank transfer/EFT and cash on delivery
-- Realistic seed data
+- Next.js App Router
+- TypeScript
+- Prisma
+- PostgreSQL
+- Tailwind CSS
+- shadcn-style UI primitives
+- Zod
+- Server Actions
+- Cookie + JWT based auth
+
+## Current capabilities
+
+- Storefront home page with premium hero, category discovery, featured products, and new arrivals
+- Product catalog with search, category filter, brand filter, stock filter, sorting, and pagination
+- Product detail page with pricing hierarchy and add-to-cart flow
+- Cart with server-side quantity updates, coupon application, clear cart, and secure totals
+- Checkout with address selection, payment method selection, coupon support, and snapshot-based order creation
+- Account area with address management and order history
+- Admin dashboard with revenue, orders, customers, product count, low stock visibility, and recent orders
+- Admin product CRUD
+- Admin order status management and manual payment-friendly flow
+- Site settings, seed data, banner, coupon, inventory log, wishlist, and review placeholder models
+
+## Security model
+
+- Client never decides price, role, stock, discount, or order total
+- Cart totals are recalculated from database data
+- Checkout revalidates stock inside a Prisma transaction
+- Order items store snapshot fields such as product name, SKU, slug, brand, image, and unit price
+- Admin routes are protected in both routing and server logic
+- Zod validation is used for auth, cart, checkout, address, and admin product input
+- Session cookies are HTTP-only
 
 ## Setup
 
-```bash
-cp .env.example .env
+1. Install dependencies
+
+```powershell
 npm install
-npx prisma generate
-npx prisma migrate dev --name init
-npx prisma db seed
-npm run dev
 ```
 
-Open:
+2. Create environment files
 
-```txt
-http://localhost:3000
-```
+Use `.env.example` as a starting point. In local development, Next.js reads `.env.local` and Prisma CLI can read `.env`.
 
-## Seed accounts
-
-```txt
-Admin:
-admin@adakancommerce.com
-Admin12345
-
-Customer:
-musteri@adakancommerce.com
-User12345
-```
-
-## Environment variables
+Required variables:
 
 ```env
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/adakan_commerce_core?schema=public"
@@ -54,109 +59,173 @@ AUTH_SECRET="change-this-long-random-secret-min-32-chars"
 NEXT_PUBLIC_SITE_URL="http://localhost:3000"
 ```
 
-`AUTH_SECRET` must be a long random value in production.
+3. Generate Prisma client
+
+```powershell
+npx prisma generate
+```
+
+4. Apply migrations
+
+```powershell
+npx prisma migrate dev
+```
+
+5. Seed demo data
+
+```powershell
+npx prisma db seed
+```
+
+or
+
+```powershell
+npm run prisma:seed
+```
+
+6. Start development server
+
+```powershell
+npm run dev
+```
+
+7. Production build verification
+
+```powershell
+npm run build
+```
+
+## Local demo accounts
+
+```txt
+Admin
+admin@adakancommerce.com
+Admin12345
+
+Customer
+musteri@adakancommerce.com
+User12345
+```
+
+## Useful scripts
+
+```powershell
+npm run dev
+npm run dev:turbopack
+npm run build
+npm run prisma:generate
+npm run prisma:migrate
+npm run prisma:reset
+npm run prisma:seed
+npm run db:studio
+```
+
+Warning:
+`npm run prisma:reset` deletes local development data.
 
 ## Folder structure
 
 ```txt
 app/
-  admin/                 Admin panel routes
-  products/              Storefront product pages
-  category/              Category pages
-  cart/                  Cart page
-  checkout/              Checkout page
-  login/ register/       Auth pages
-  legal/                 KVKK, contracts, privacy, returns, contact
+  admin/                    Admin routes
+  account/                  Customer account routes
+  cart/ checkout/ orders/   Commerce flow routes
+  products/ category/       Storefront catalog routes
+  legal/                    Legal and contact pages
 components/
-  storefront/            Public UI components
-  admin/                 Admin shell/components
-  ui/                    shadcn-style primitives
+  admin/                    Admin layout and panels
+  storefront/               Header, product cards, cart UI
+  ui/                       Shared primitives
 lib/
-  actions/               Server actions
-  auth.ts                JWT session and role helpers
-  cart.ts                Server cart and total logic
-  env.ts                 Env validation
-  prisma.ts              Prisma singleton
-  validators.ts          Zod schemas
+  actions/                  Server actions
+  auth.ts                   Session and role helpers
+  auth-guards.ts            Shared auth guard helpers
+  cart.ts                   Cart lookup and total calculation
+  commerce.ts               Effective pricing and discount helpers
+  money.ts                  Money formatting
+  pagination.ts             Pagination helpers
+  prisma.ts                 Prisma singleton
+  slug.ts                   Slug generation
+  validators.ts             Zod schemas
 prisma/
-  schema.prisma          Database design
-  seed.ts                Realistic seed data
+  migrations/               Prisma migrations
+  schema.prisma             Database schema
+  seed.ts                   Realistic seed data
 ```
 
-## Architecture decisions
+## Database design notes
 
-### Storefront vs admin separation
+The schema is intentionally prepared for commercial growth:
 
-Admin routes live under `app/admin`. The admin panel is protected twice:
+- `Product` supports active state, featured state, sale price, compare-at price, stock, low stock threshold, SEO fields, barcode, and search keywords
+- `Category` and `Brand` support slugs and SEO fields
+- `Order` and `OrderItem` store snapshot data so historical orders do not depend on current product prices
+- `Coupon`, `Banner`, `SiteSettings`, `Payment`, `InventoryLog`, `Review`, and `WishlistItem` already exist
+- `ProductVariant` and `ProductAttribute` provide room for catalog expansion
 
-1. `middleware.ts` checks the JWT role before reaching `/admin` routes.
-2. `requireAdmin()` is called in the admin layout and admin server actions.
+## Payment architecture
 
-This prevents the common mistake of only hiding admin buttons in the UI.
+Implemented now:
 
-### Server-side business logic
+- Bank transfer / EFT
+- Cash on delivery
+- Manual admin confirmation
 
-The client never decides prices, stock, role, or order totals. Important checks run on the server:
+Prepared for later:
 
-- Product must be active.
-- Product must have enough stock.
-- Cart totals are calculated from database prices.
-- Checkout rechecks stock inside a Prisma transaction.
-- Stock decrement and order creation happen in one transaction.
+- iyzico
+- PayTR
+- Stripe-like gateway integrations
 
-### Payment architecture
+The `Payment` model is already separated so provider transaction IDs, statuses, and reconciliation logic can be added later without redesigning the order core.
 
-The first version supports:
+## Admin notes
 
-- `BANK_TRANSFER`
-- `CASH_ON_DELIVERY`
+Current admin scope:
 
-Online providers such as iyzico or PayTR are intentionally not implemented yet. The `Payment` model exists so a provider integration can later store transaction IDs and statuses.
+- Dashboard visibility
+- Product CRUD
+- Order listing and status updates
+- Customer overview
+- Site settings visibility
 
-### MVP scope
+Next good upgrade targets:
 
-Included now:
+- Category CRUD
+- Brand CRUD
+- Coupon CRUD
+- Banner CRUD
+- Inventory log page
+- Order detail page
+- Manual payment confirmation workflow improvements
 
-- Clean product/order/cart/user foundation
-- Admin viewing screens
-- Manual checkout
-- Site settings model
-- Inventory log model
-- Seed data
+## Production notes
 
-Later features:
+Do not do these in production:
 
-- Full product CRUD forms with image upload
-- Address CRUD UI
-- Coupon application UI
-- Online payment provider integration
-- E-mail/SMS notifications
-- Advanced analytics
-- Invoice/e-archive integration
-- Search indexing
-- Multi-language UI beyond Turkish-first content
+- Do not keep demo credentials
+- Do not use the default `AUTH_SECRET`
+- Do not use `prisma migrate reset`
+- Do not seed fake sample orders and demo banners
+- Do not rely only on UI-level admin hiding
 
-## Security checklist
+Before production, add:
 
-- [x] Zod validation for auth, cart, checkout, product admin input
-- [x] HTTP-only session cookie
-- [x] JWT role in session
-- [x] Admin middleware
-- [x] Server-side `requireAdmin()`
-- [x] Server-side price calculation
-- [x] Server-side stock validation
-- [x] Prisma transaction during checkout
-- [x] Environment validation
-- [x] No sensitive env variables exposed to client
+- Rate limiting for auth and sensitive mutations
+- Audit logs for admin actions
+- Error monitoring
+- Object storage for image uploads
+- Email/SMS notifications
+- Legal text review
+- Backup and database maintenance strategy
 
-## Notes for production
+## Roadmap
 
-Before production:
-
-- Replace legal page placeholder text with lawyer-approved text.
-- Use a real PostgreSQL database.
-- Use a strong `AUTH_SECRET`.
-- Add rate limiting to login/register.
-- Add CSRF/rate-limit hardening for sensitive mutations if needed.
-- Add image upload storage such as S3/R2.
-- Add logging and error monitoring.
+- Full category, brand, coupon, and banner management
+- Better product media gallery and image upload flow
+- Wishlist UI and reviews UI
+- Stronger order detail and return/cancellation operations
+- Reporting and analytics
+- Marketplace / ERP / cargo integrations
+- Invoice and e-archive support
+- Multi-language and multi-currency expansion

@@ -4,6 +4,7 @@ import { ChevronRight, ShieldCheck, Truck } from "lucide-react";
 import { notFound } from "next/navigation";
 import { Header } from "@/components/storefront/header";
 import { AddToCartButton } from "@/components/storefront/add-to-cart-button";
+import { getDiscountPercentage, getEffectiveUnitPrice } from "@/lib/commerce";
 import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/utils";
 
@@ -24,6 +25,11 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
   const image =
     product.images[0]?.url ??
     "https://images.unsplash.com/photo-1523275335684-37898b6baf30";
+  const effectivePrice = getEffectiveUnitPrice(product);
+  const discountPercentage = getDiscountPercentage(
+    product.salePrice ?? product.price,
+    product.compareAtPrice
+  );
 
   return (
     <>
@@ -41,6 +47,11 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
           <div className="overflow-hidden rounded-[2.6rem] border border-slate-200 bg-white/80 p-4 shadow-[0_24px_80px_rgba(15,23,42,0.06)] backdrop-blur">
             <div className="relative aspect-square overflow-hidden rounded-[2rem] bg-gradient-to-br from-stone-100 via-stone-50 to-amber-50">
               <Image src={image} alt={product.name} fill className="object-cover" />
+              {discountPercentage > 0 ? (
+                <div className="absolute left-5 top-5 rounded-full bg-amber-500 px-4 py-2 text-sm font-black text-slate-950">
+                  %{discountPercentage} indirim
+                </div>
+              ) : null}
             </div>
           </div>
 
@@ -52,9 +63,16 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
             <h1 className="mt-3 text-4xl font-black tracking-tight text-slate-950 md:text-5xl">
               {product.name}
             </h1>
-            <p className="mt-5 text-4xl font-black tracking-tight text-slate-950">
-              {formatPrice(product.price.toString())}
-            </p>
+            <div className="mt-5 flex flex-wrap items-end gap-3">
+              <p className="text-4xl font-black tracking-tight text-slate-950">
+                {formatPrice(effectivePrice)}
+              </p>
+              {product.compareAtPrice ? (
+                <p className="text-lg text-slate-400 line-through">
+                  {formatPrice(product.compareAtPrice.toString())}
+                </p>
+              ) : null}
+            </div>
             <p className="mt-6 text-base leading-8 text-slate-600">{product.description}</p>
 
             <div className="mt-8 grid gap-3 sm:grid-cols-2">

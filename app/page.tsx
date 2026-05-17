@@ -5,12 +5,23 @@ import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
 
 export default async function HomePage() {
-  const [products, banner] = await Promise.all([
+  const [products, newArrivals, categories, banner] = await Promise.all([
     prisma.product.findMany({
       where: { isActive: true, isFeatured: true },
       include: { images: true },
       take: 8,
       orderBy: { createdAt: "desc" }
+    }),
+    prisma.product.findMany({
+      where: { isActive: true },
+      include: { images: true },
+      take: 4,
+      orderBy: { createdAt: "desc" }
+    }),
+    prisma.category.findMany({
+      where: { isActive: true },
+      take: 3,
+      orderBy: { createdAt: "asc" }
     }),
     prisma.banner.findFirst({
       where: { isActive: true },
@@ -77,7 +88,7 @@ export default async function HomePage() {
                   Checkout discipline
                 </p>
                 <p className="mt-2 text-sm leading-6 text-white/80">
-                  Sepet toplamlari client'ta degil veritabani fiyatlariyla yeniden hesaplanir.
+                  Sepet toplamlari istemcide degil veritabani fiyatlariyla yeniden hesaplanir.
                 </p>
               </div>
               <div className="rounded-[1.8rem] border border-white/10 bg-white/10 p-5 backdrop-blur">
@@ -98,6 +109,30 @@ export default async function HomePage() {
         </section>
 
         <section className="mx-auto max-w-7xl px-4">
+          <div className="mb-8 grid gap-5 md:grid-cols-3">
+            {categories.map((category) => (
+              <Link
+                key={category.id}
+                href={`/category/${category.slug}`}
+                className="group rounded-[2rem] border border-slate-200 bg-white/75 p-6 shadow-lg shadow-slate-900/5 transition hover:-translate-y-1 hover:shadow-xl"
+              >
+                <p className="text-[0.68rem] font-bold uppercase tracking-[0.26em] text-amber-700">
+                  Category edit
+                </p>
+                <h2 className="mt-3 text-2xl font-black tracking-tight text-slate-950">
+                  {category.name}
+                </h2>
+                <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600">
+                  {category.description ??
+                    "Kategori vitrini, filtrelenebilir katalog ve profesyonel urun akisi icin hazir."}
+                </p>
+                <span className="mt-6 inline-flex text-sm font-bold text-emerald-900 transition group-hover:translate-x-1">
+                  Kategoriyi ac
+                </span>
+              </Link>
+            ))}
+          </div>
+
           <div className="rounded-[2.5rem] border border-slate-200 bg-white/75 p-6 shadow-2xl shadow-slate-900/5 backdrop-blur md:p-8">
             <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
               <div>
@@ -125,6 +160,30 @@ export default async function HomePage() {
                 calistirabilir veya admin panelinden urun ekleyebilirsin.
               </div>
             )}
+          </div>
+        </section>
+
+        <section className="mx-auto mt-8 max-w-7xl px-4">
+          <div className="rounded-[2.5rem] border border-slate-200 bg-slate-950 p-6 text-white shadow-2xl shadow-slate-950/20 md:p-8">
+            <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+              <div>
+                <p className="text-[0.72rem] font-bold uppercase tracking-[0.32em] text-emerald-200/80">
+                  New arrivals
+                </p>
+                <h2 className="mt-2 text-3xl font-black tracking-tight md:text-4xl">
+                  Yeni gelen secimler
+                </h2>
+              </div>
+              <Link href="/products?sort=newest" className="text-sm font-bold uppercase tracking-[0.18em] text-emerald-200">
+                Yeni urunleri gor
+              </Link>
+            </div>
+
+            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+              {newArrivals.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
           </div>
         </section>
       </main>
