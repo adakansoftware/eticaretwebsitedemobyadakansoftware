@@ -70,6 +70,7 @@ export default async function WishlistPage() {
                         src={item.product.images[0].url}
                         alt={item.product.name}
                         fill
+                        sizes="120px"
                         className="object-cover"
                       />
                     ) : null}

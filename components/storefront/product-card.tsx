@@ -26,6 +26,7 @@ export function ProductCard({ product }: Props) {
             src={image}
             alt={product.name}
             fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
             className="object-cover transition duration-500 group-hover:scale-105"
           />
           <div className="absolute inset-x-4 top-4 flex items-center justify-between">

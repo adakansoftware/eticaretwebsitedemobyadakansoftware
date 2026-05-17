@@ -70,7 +70,14 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
         <section className="grid gap-8 lg:grid-cols-[1fr_.95fr]">
           <div className="overflow-hidden rounded-[2.6rem] border border-slate-200 bg-white/80 p-4 shadow-[0_24px_80px_rgba(15,23,42,0.06)] backdrop-blur">
             <div className="relative aspect-square overflow-hidden rounded-[2rem] bg-gradient-to-br from-stone-100 via-stone-50 to-amber-50">
-              <Image src={image} alt={product.name} fill className="object-cover" />
+              <Image
+                src={image}
+                alt={product.name}
+                fill
+                sizes="100vw"
+                priority
+                className="object-cover"
+              />
               {discountPercentage > 0 ? (
                 <div className="absolute left-5 top-5 rounded-full bg-amber-500 px-4 py-2 text-sm font-black text-slate-950">
                   %{discountPercentage} indirim

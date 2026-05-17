@@ -69,6 +69,7 @@ export default async function AdminBannersPage() {
                       src={banner.imageUrl}
                       alt={banner.title}
                       fill
+                      sizes="(max-width: 1280px) 100vw, 40vw"
                       className="object-cover"
                     />
                   </div>

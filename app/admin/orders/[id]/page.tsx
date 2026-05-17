@@ -89,6 +89,7 @@ export default async function AdminOrderDetailPage({ params }: OrderDetailPagePr
                         src={item.productImage}
                         alt={item.productName}
                         fill
+                        sizes="96px"
                         className="object-cover"
                       />
                     ) : null}
