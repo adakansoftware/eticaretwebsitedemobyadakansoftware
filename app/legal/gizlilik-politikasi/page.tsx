@@ -1,2 +1,25 @@
-import { Header } from "@/components/storefront/header";
-export default function LegalPage() { return <><Header /><main className="mx-auto max-w-3xl px-4 py-12"><article className="rounded-3xl bg-white p-8 shadow-sm"><h1 className="text-3xl font-black capitalize">gizlilik politikasi</h1><p className="mt-4 leading-8 text-slate-600">Bu sayfa marka/proje bazında avukat veya muhasebeci kontrolüyle özelleştirilmelidir. Core proje hukuki sayfa iskeletini hazır sunar.</p></article></main></>; }
+import { LegalPageShell } from "@/components/storefront/legal-page-shell";
+
+export default function PrivacyPage() {
+  return (
+    <LegalPageShell
+      eyebrow="Yasal bilgilendirme"
+      title="Gizlilik politikasi"
+      description="Kullanici verilerinin gizlilik anlayisi, erisim prensipleri ve temel koruma yaklasimi bu sayfada ornek metin olarak yer alir."
+      sections={[
+        {
+          title: "Toplanan bilgiler",
+          body: "Siparis, teslimat, iletisim ve destek surecleri icin gerekli olan temel bilgiler sinirli amaclarla toplanabilir."
+        },
+        {
+          title: "Kullanim alani",
+          body: "Toplanan bilgiler urun sevkiyati, odeme dogrulamasi, musteri iletisimi ve hizmet kalitesinin iyilestirilmesi gibi sureclerde kullanilabilir."
+        },
+        {
+          title: "Ucuncu taraf paylasimi",
+          body: "Veriler ancak teslimat, odeme veya hukuki yukumluluk gibi gerekli senaryolarda ilgili hizmet saglayicilarla sinirli kapsamda paylasilmalidir."
+        }
+      ]}
+    />
+  );
+}

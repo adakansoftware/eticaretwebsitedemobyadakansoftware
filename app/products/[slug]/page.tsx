@@ -165,7 +165,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
           <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
               <p className="text-[0.72rem] font-bold uppercase tracking-[0.3em] text-amber-700">
-                Review section
+                Musteri yorumlari
               </p>
               <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-950">
                 Musteri yorumlari

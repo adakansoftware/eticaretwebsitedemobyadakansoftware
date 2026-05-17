@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Search } from "lucide-react";
+import type { Metadata } from "next";
 import { Header } from "@/components/storefront/header";
 import { ProductCard } from "@/components/storefront/product-card";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,11 @@ const sortOptions = [
   { value: "price-asc", label: "Fiyat artan" },
   { value: "price-desc", label: "Fiyat azalan" }
 ] as const;
+
+export const metadata: Metadata = {
+  title: "Urunler",
+  description: "Telefon aksesuarlari, ofis urunleri ve secili kategorilerdeki urunleri kesfedin."
+};
 
 function buildQueryString(
   current: Record<string, string | undefined>,
@@ -115,10 +121,10 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-2xl">
               <p className="text-[0.72rem] font-bold uppercase tracking-[0.34em] text-amber-700">
-                Full collection
+                Urun vitrini
               </p>
               <h1 className="mt-3 text-4xl font-black tracking-tight text-slate-950 md:text-5xl">
-                Urun katalodu
+                Urunler
               </h1>
               <p className="mt-3 text-base leading-7 text-slate-600">
                 Kategori, marka, stok ve fiyat ekseninde daha ciddi bir vitrin deneyimi.

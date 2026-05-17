@@ -5,8 +5,8 @@ import { Header } from "@/components/storefront/header";
 import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
-  title: "Kategoriler | Adakan Commerce Core",
-  description: "Adakan Commerce Core vitrinindeki aktif kategorileri inceleyin."
+  title: "Kategoriler",
+  description: "Aktif kategorileri inceleyerek ihtiyaciniza uygun urunlere hizla ulasin."
 };
 
 export default async function CategoriesPage() {

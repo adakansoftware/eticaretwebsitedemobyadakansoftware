@@ -7,14 +7,14 @@ export async function Header() {
 
   return (
     <header className="sticky top-0 z-40 px-4 pt-4">
-      <div className="mx-auto flex max-w-7xl items-center justify-between rounded-full border border-slate-200 bg-white/80 px-5 py-3 shadow-lg shadow-slate-900/5 backdrop-blur">
+      <div className="mx-auto flex max-w-7xl items-center justify-between rounded-full border border-slate-200 bg-white/88 px-5 py-3 shadow-lg shadow-slate-900/5 backdrop-blur">
         <Link href="/" className="flex items-center gap-3">
           <span className="grid h-10 w-10 place-items-center rounded-full bg-emerald-900 text-sm font-black text-white">
             AC
           </span>
           <span className="leading-tight">
             <span className="block text-[0.68rem] font-bold uppercase tracking-[0.28em] text-amber-700">
-              Commerce Core
+              Guvenli alisveris
             </span>
             <span className="block text-base font-black tracking-tight text-slate-950">
               Adakan Commerce
@@ -22,7 +22,10 @@ export async function Header() {
           </span>
         </Link>
 
-        <nav className="hidden items-center gap-6 text-sm font-semibold text-slate-700 md:flex">
+        <nav className="hidden items-center gap-6 text-sm font-semibold text-slate-700 lg:flex">
+          <Link className="transition hover:text-emerald-800" href="/">
+            Ana sayfa
+          </Link>
           <Link className="transition hover:text-emerald-800" href="/products">
             Urunler
           </Link>
@@ -33,14 +36,9 @@ export async function Header() {
             Iletisim
           </Link>
           {user ? (
-            <>
-              <Link className="transition hover:text-emerald-800" href="/account/wishlist">
-                Favorilerim
-              </Link>
-              <Link className="transition hover:text-emerald-800" href="/account/addresses">
-                Adreslerim
-              </Link>
-            </>
+            <Link className="transition hover:text-emerald-800" href="/account/wishlist">
+              Favorilerim
+            </Link>
           ) : null}
         </nav>
 
@@ -48,7 +46,7 @@ export async function Header() {
           {user?.role === "ADMIN" ? (
             <Link
               href="/admin"
-              className="hidden rounded-full border border-slate-300 px-4 py-2 text-sm font-bold text-slate-900 transition hover:border-amber-500 hover:bg-white md:inline-flex"
+              className="hidden rounded-full border border-slate-300 px-4 py-2 text-sm font-bold text-slate-900 transition hover:border-amber-500 hover:bg-white lg:inline-flex"
             >
               Admin
             </Link>
@@ -56,8 +54,15 @@ export async function Header() {
 
           <Link
             href={user ? "/orders" : "/login"}
-            aria-label="Hesap"
-            className="grid h-11 w-11 place-items-center rounded-full border border-slate-300 bg-white text-slate-900 transition hover:-translate-y-0.5 hover:border-amber-500"
+            className="hidden rounded-full border border-slate-300 px-4 py-2 text-sm font-bold text-slate-900 transition hover:border-amber-500 hover:bg-white md:inline-flex"
+          >
+            {user ? "Hesabim" : "Giris yap"}
+          </Link>
+
+          <Link
+            href={user ? "/orders" : "/login"}
+            aria-label={user ? "Hesabim" : "Giris yap"}
+            className="grid h-11 w-11 place-items-center rounded-full border border-slate-300 bg-white text-slate-900 transition hover:-translate-y-0.5 hover:border-amber-500 md:hidden"
           >
             <UserRound className="h-5 w-5" />
           </Link>

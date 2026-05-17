@@ -1,2 +1,25 @@
-import { Header } from "@/components/storefront/header";
-export default function LegalPage() { return <><Header /><main className="mx-auto max-w-3xl px-4 py-12"><article className="rounded-3xl bg-white p-8 shadow-sm"><h1 className="text-3xl font-black capitalize">iade iptal politikasi</h1><p className="mt-4 leading-8 text-slate-600">Bu sayfa marka/proje bazında avukat veya muhasebeci kontrolüyle özelleştirilmelidir. Core proje hukuki sayfa iskeletini hazır sunar.</p></article></main></>; }
+import { LegalPageShell } from "@/components/storefront/legal-page-shell";
+
+export default function ReturnPolicyPage() {
+  return (
+    <LegalPageShell
+      eyebrow="Satis sonrasi destek"
+      title="Iade ve iptal politikasi"
+      description="Iade ve iptal surecine iliskin yol haritasi burada ornek ve duzenlenebilir bir cati olarak sunulur."
+      sections={[
+        {
+          title: "Siparis iptali",
+          body: "Hazirlama veya sevk surecine girmemis siparisler icin iptal talebi destek kanallari uzerinden alinabilir."
+        },
+        {
+          title: "Iade kosullari",
+          body: "Kullanilmamis ve tekrar satisa uygun urunler, ilgili mevzuat ve urun tipi dikkate alinarak iade surecine alinabilir."
+        },
+        {
+          title: "Ucret iadesi",
+          body: "Onaylanan iade veya iptal taleplerinde geri odeme sureci odeme yontemine gore planlanmali ve kullanici bilgilendirilmelidir."
+        }
+      ]}
+    />
+  );
+}

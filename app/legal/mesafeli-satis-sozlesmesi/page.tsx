@@ -1,2 +1,25 @@
-import { Header } from "@/components/storefront/header";
-export default function LegalPage() { return <><Header /><main className="mx-auto max-w-3xl px-4 py-12"><article className="rounded-3xl bg-white p-8 shadow-sm"><h1 className="text-3xl font-black capitalize">mesafeli satis sozlesmesi</h1><p className="mt-4 leading-8 text-slate-600">Bu sayfa marka/proje bazında avukat veya muhasebeci kontrolüyle özelleştirilmelidir. Core proje hukuki sayfa iskeletini hazır sunar.</p></article></main></>; }
+import { LegalPageShell } from "@/components/storefront/legal-page-shell";
+
+export default function DistanceSalesPage() {
+  return (
+    <LegalPageShell
+      eyebrow="Yasal bilgilendirme"
+      title="Mesafeli satis sozlesmesi"
+      description="Siparis, teslimat ve tuketici haklari kapsaminda kullanilabilecek ornek bir mesafeli satis sozlesmesi catisi."
+      sections={[
+        {
+          title: "Taraflar ve konu",
+          body: "Satici ile alici arasindaki siparis, odeme ve teslimat surecine iliskin temel sartlar bu bolumde tanimlanir."
+        },
+        {
+          title: "Teslimat ve odeme",
+          body: "Siparisin hazirlanmasi, odeme yontemi, teslimat sekli ve tahmini surec adimlari acikca belirtilmelidir."
+        },
+        {
+          title: "Cayma hakki ve uyusmazlik",
+          body: "Tuketici haklari, cayma suresi ve olasi uyusmazlik durumlarinda izlenecek yol ilgili mevzuata uygun sekilde duzenlenmelidir."
+        }
+      ]}
+    />
+  );
+}

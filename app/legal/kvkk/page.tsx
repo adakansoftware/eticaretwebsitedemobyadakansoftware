@@ -1,2 +1,25 @@
-import { Header } from "@/components/storefront/header";
-export default function LegalPage() { return <><Header /><main className="mx-auto max-w-3xl px-4 py-12"><article className="rounded-3xl bg-white p-8 shadow-sm"><h1 className="text-3xl font-black capitalize">kvkk</h1><p className="mt-4 leading-8 text-slate-600">Bu sayfa marka/proje bazında avukat veya muhasebeci kontrolüyle özelleştirilmelidir. Core proje hukuki sayfa iskeletini hazır sunar.</p></article></main></>; }
+import { LegalPageShell } from "@/components/storefront/legal-page-shell";
+
+export default function KvkkPage() {
+  return (
+    <LegalPageShell
+      eyebrow="Yasal bilgilendirme"
+      title="KVKK"
+      description="Kisisel verilerin korunmasi surecine iliskin bilgilendirme ve temel ilkeler bu sayfada ornek bir cati olarak sunulur."
+      sections={[
+        {
+          title: "Veri isleme amaci",
+          body: "Siparis surecleri, teslimat organizasyonu, odeme takibi ve musteri destegi gibi operasyonlarin saglikli yuruyebilmesi icin gerekli veriler islenebilir."
+        },
+        {
+          title: "Saklama ve guvenlik",
+          body: "Kullanici verileri yalnizca hizmet sureci, guvenlik ve mevzuat kapsaminda gerekli oldugu kadar saklanmali; erisim kontrolleri ve kayit altyapisi ile korunmalidir."
+        },
+        {
+          title: "Basvuru haklari",
+          body: "Veri sahibi, ilgili mevzuat kapsaminda bilgi alma, duzeltme talep etme ve gerekli hallerde silme basvurusu yapma hakkina sahiptir."
+        }
+      ]}
+    />
+  );
+}

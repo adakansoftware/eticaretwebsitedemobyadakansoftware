@@ -1,11 +1,19 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Header } from "@/components/storefront/header";
 import { ProductCard } from "@/components/storefront/product-card";
+import { TrustStrip } from "@/components/storefront/trust-strip";
 import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
 
+export const metadata: Metadata = {
+  title: "Secili urunlerde guvenli ve hizli alisveris",
+  description:
+    "Telefon aksesuarlari, ofis urunleri ve secili teknoloji kategorilerinde guvenli odeme ve hizli teslimat avantajiyla alisveris yapin."
+};
+
 export default async function HomePage() {
-  const [products, newArrivals, categories, banner] = await Promise.all([
+  const [products, newArrivals, categories, banner, settings] = await Promise.all([
     prisma.product.findMany({
       where: { isActive: true, isFeatured: true },
       include: { images: true },
@@ -27,45 +35,48 @@ export default async function HomePage() {
     prisma.banner.findFirst({
       where: { isActive: true },
       orderBy: { sortOrder: "asc" }
-    })
+    }),
+    prisma.siteSettings.findFirst()
   ]);
 
   return (
     <>
       <Header />
-      <main className="pb-16">
-        <section className="mx-auto grid max-w-7xl gap-8 px-4 pb-10 pt-10 md:grid-cols-[1.08fr_.92fr] md:items-center">
+      <main className="space-y-8 pb-16">
+        <section className="mx-auto grid max-w-7xl gap-8 px-4 pb-2 pt-10 md:grid-cols-[1.08fr_.92fr] md:items-center">
           <div className="rounded-[2.5rem] border border-slate-200 bg-white/80 p-8 shadow-2xl shadow-slate-900/5 backdrop-blur md:p-12">
             <p className="text-[0.72rem] font-bold uppercase tracking-[0.32em] text-amber-700">
-              Turkish-first commerce system
+              Guvenli alisveris deneyimi
             </p>
             <h1 className="mt-5 max-w-3xl text-5xl font-black tracking-tight text-slate-950 md:text-7xl">
-              E-ticaret cekirdeginizi vitrine degil guvene gore kurun.
+              Secili urunlerde guvenli ve hizli alisveris
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-700">
-              Stok, siparis, manuel odeme ve admin operasyonlari ayni cizgide
-              bulusuyor. Daha rafine, daha hizli ve markaya daha uygun bir temel.
+              Telefon aksesuarlarindan ofis urunlerine kadar ozenle secilmis urunleri
+              guvenli odeme ve hizli teslimat avantaji ile kesfedin.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Button asChild size="lg">
-                <Link href="/products">Koleksiyonu incele</Link>
+                <Link href="/products">Alisverise basla</Link>
               </Button>
               <Button asChild variant="outline" size="lg">
-                <Link href="/admin">Operasyon paneli</Link>
+                <Link href="/categories">Kategorileri kesfet</Link>
               </Button>
             </div>
             <div className="mt-10 grid gap-4 border-t border-slate-200 pt-6 md:grid-cols-3">
               <div>
                 <p className="text-3xl font-black text-slate-950">7/24</p>
-                <p className="mt-1 text-sm text-slate-600">Sunucu tarafinda stok ve toplam kontrolu</p>
+                <p className="mt-1 text-sm text-slate-600">Guvenli siparis ve stok kontrolu</p>
               </div>
               <div>
-                <p className="text-3xl font-black text-slate-950">MVP+</p>
-                <p className="mt-1 text-sm text-slate-600">Gercek siparis akisina yakin yonetim omurgasi</p>
+                <p className="text-3xl font-black text-slate-950">Hizli</p>
+                <p className="mt-1 text-sm text-slate-600">Operasyon odakli teslimat akisi</p>
               </div>
               <div>
-                <p className="text-3xl font-black text-slate-950">TR</p>
-                <p className="mt-1 text-sm text-slate-600">Turkiye odakli icerik ve is akis yapisi</p>
+                <p className="text-3xl font-black text-slate-950">Destek</p>
+                <p className="mt-1 text-sm text-slate-600">
+                  WhatsApp ve iletisim kanallariyla kolay ulasim
+                </p>
               </div>
             </div>
           </div>
@@ -74,40 +85,39 @@ export default async function HomePage() {
             <div className="absolute -right-20 -top-16 h-48 w-48 rounded-full bg-white/10 blur-2xl" />
             <div className="absolute -bottom-16 -left-10 h-40 w-40 rounded-full bg-amber-400/20 blur-2xl" />
             <p className="relative text-[0.72rem] font-bold uppercase tracking-[0.3em] text-emerald-100/80">
-              Campaign frame
+              Alisveris avantajlari
             </p>
             <h2 className="relative mt-4 text-3xl font-black tracking-tight md:text-4xl">
-              {banner?.title ?? "Premium e-ticaret altyapisi"}
+              {banner?.title ?? "Guvenli alisveris, hizli destek"}
             </h2>
             <p className="relative mt-3 text-base leading-7 text-emerald-50/80">
               {banner?.subtitle ??
-                "Turkce oncelikli, guvenli ve ozellestirilebilir operasyon omurgasi."}
+                "Kapida odeme, EFT / Havale ve guvenli siparis akisi ile alisverisinizi kolaylastiriyoruz."}
             </p>
             <div className="relative mt-8 grid gap-4">
               <div className="rounded-[1.8rem] border border-white/10 bg-white/10 p-5 backdrop-blur">
                 <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-100/75">
-                  Checkout discipline
+                  Guvenli alisveris
                 </p>
                 <p className="mt-2 text-sm leading-6 text-white/80">
-                  Sepet toplamlari istemcide degil veritabani fiyatlariyla yeniden hesaplanir.
+                  Sepet toplamlari ve stok bilgileri siparis aninda yeniden kontrol edilir.
                 </p>
               </div>
               <div className="rounded-[1.8rem] border border-white/10 bg-white/10 p-5 backdrop-blur">
                 <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-100/75">
-                  Admin visibility
+                  WhatsApp destek
                 </p>
                 <p className="mt-2 text-sm leading-6 text-white/80">
-                  Urun, siparis ve musteri akislarini tek panelden yonetmek icin hazir.
+                  {settings?.whatsappNumber
+                    ? `${settings.whatsappNumber} numarasi uzerinden bize ulasabilirsiniz.`
+                    : "Siparis oncesi ve sonrasi destek icin bizimle hizla iletisime gecebilirsiniz."}
                 </p>
               </div>
             </div>
-            {!banner ? (
-              <p className="relative mt-6 rounded-2xl bg-white/10 p-4 text-sm text-emerald-50/85">
-                Aktif banner bulunamadi. Seed verisi ile varsayilan vitrini tekrar yukleyebilirsin.
-              </p>
-            ) : null}
           </div>
         </section>
+
+        <TrustStrip />
 
         <section className="mx-auto max-w-7xl px-4">
           <div className="mb-8 grid gap-5 md:grid-cols-3">
@@ -118,14 +128,14 @@ export default async function HomePage() {
                 className="group rounded-[2rem] border border-slate-200 bg-white/75 p-6 shadow-lg shadow-slate-900/5 transition hover:-translate-y-1 hover:shadow-xl"
               >
                 <p className="text-[0.68rem] font-bold uppercase tracking-[0.26em] text-amber-700">
-                  Kategori
+                  One cikan kategori
                 </p>
                 <h2 className="mt-3 text-2xl font-black tracking-tight text-slate-950">
                   {category.name}
                 </h2>
                 <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600">
                   {category.description ??
-                    "Kategori vitrini, filtrelenebilir katalog ve profesyonel urun akisi icin hazir."}
+                    "Bu kategori altindaki secili urunleri inceleyerek ihtiyaciniza uygun urunleri kesfedin."}
                 </p>
                 <p className="mt-4 text-sm font-semibold text-slate-500">
                   {category._count.products} urun
@@ -141,14 +151,14 @@ export default async function HomePage() {
             <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
               <div>
                 <p className="text-[0.72rem] font-bold uppercase tracking-[0.32em] text-amber-700">
-                  Featured drop
+                  One cikan urunler
                 </p>
                 <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-950 md:text-4xl">
-                  One cikan urunler
+                  Ilgi goren secimler
                 </h2>
               </div>
               <Link href="/products" className="text-sm font-bold uppercase tracking-[0.18em] text-emerald-900">
-                Tum katalogu gor
+                Tum urunleri gor
               </Link>
             </div>
 
@@ -160,22 +170,21 @@ export default async function HomePage() {
               </div>
             ) : (
               <div className="rounded-[2rem] bg-white p-8 text-slate-600 shadow-sm">
-                Henuz yayinda one cikan urun yok. Gelistirme ortaminda seed verisini
-                calistirabilir veya admin panelinden urun ekleyebilirsin.
+                Henuz yayinda one cikan urun yok.
               </div>
             )}
           </div>
         </section>
 
-        <section className="mx-auto mt-8 max-w-7xl px-4">
+        <section className="mx-auto max-w-7xl px-4">
           <div className="rounded-[2.5rem] border border-slate-200 bg-slate-950 p-6 text-white shadow-2xl shadow-slate-950/20 md:p-8">
             <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
               <div>
                 <p className="text-[0.72rem] font-bold uppercase tracking-[0.32em] text-emerald-200/80">
-                  New arrivals
+                  Yeni gelenler
                 </p>
                 <h2 className="mt-2 text-3xl font-black tracking-tight md:text-4xl">
-                  Yeni gelen secimler
+                  Son eklenen urunler
                 </h2>
               </div>
               <Link href="/products?sort=newest" className="text-sm font-bold uppercase tracking-[0.18em] text-emerald-200">
