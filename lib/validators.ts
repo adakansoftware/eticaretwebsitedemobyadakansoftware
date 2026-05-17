@@ -40,13 +40,22 @@ export const productAdminSchema = z.object({
   name: z.string().min(2),
   slug: z.string().min(2),
   description: z.string().min(10),
-  shortDescription: z.string().optional(),
+  shortDescription: z.string().optional().transform((value) => value || undefined),
   price: z.coerce.number().positive(),
-  compareAtPrice: z.coerce.number().positive().optional(),
+  compareAtPrice: z
+    .union([z.coerce.number().positive(), z.literal("")])
+    .optional()
+    .transform((value) => (value === "" || value === undefined ? undefined : value)),
   sku: z.string().min(2),
   stock: z.coerce.number().int().min(0),
   isActive: z.coerce.boolean().default(true),
   isFeatured: z.coerce.boolean().default(false),
   categoryId: z.string().min(1),
-  brandId: z.string().optional()
+  brandId: z.string().optional().transform((value) => value || undefined),
+  imageUrl: z
+    .string()
+    .url("Gecerli bir gorsel URL gir")
+    .or(z.literal(""))
+    .optional()
+    .transform((value) => (value === "" || value === undefined ? undefined : value))
 });
