@@ -14,6 +14,28 @@ type OrderDetailPageProps = {
   params: Promise<{ id: string }>;
 };
 
+function getOrderCustomerLabel(order: {
+  user: { name: string | null; email: string; phone: string | null } | null;
+  guestName?: string | null;
+  guestEmail?: string | null;
+  shippingFullName: string;
+  shippingPhone: string;
+}) {
+  if (order.user) {
+    return {
+      name: order.user.name ?? order.guestName ?? order.shippingFullName,
+      email: order.user.email,
+      phone: order.user.phone ?? order.shippingPhone
+    };
+  }
+
+  return {
+    name: order.guestName ?? order.shippingFullName,
+    email: order.guestEmail ?? "E-posta yok",
+    phone: order.shippingPhone
+  };
+}
+
 export default async function AdminOrderDetailPage({ params }: OrderDetailPageProps) {
   const { id } = await params;
 
@@ -28,6 +50,7 @@ export default async function AdminOrderDetailPage({ params }: OrderDetailPagePr
   });
 
   if (!order) notFound();
+  const customer = getOrderCustomerLabel(order);
 
   return (
     <div className="space-y-8">
@@ -41,7 +64,7 @@ export default async function AdminOrderDetailPage({ params }: OrderDetailPagePr
               {order.orderNumber}
             </h1>
             <p className="mt-3 text-sm text-slate-300">
-              Siparis ID: {order.id} · Musteri: {order.user.name} · {order.user.email}
+              Siparis ID: {order.id} / Musteri: {customer.name} / {customer.email}
             </p>
           </div>
 
@@ -92,7 +115,7 @@ export default async function AdminOrderDetailPage({ params }: OrderDetailPagePr
                   <div>
                     <h3 className="text-lg font-black text-white">{item.productName}</h3>
                     <p className="mt-1 text-sm text-slate-300">
-                      {item.productBrand ?? "Marka yok"} · SKU {item.sku}
+                      {item.productBrand ?? "Marka yok"} / SKU {item.sku}
                     </p>
                     <p className="mt-1 text-sm text-slate-400">/{item.productSlug}</p>
                   </div>
@@ -187,9 +210,14 @@ export default async function AdminOrderDetailPage({ params }: OrderDetailPagePr
             <div className="mt-6 space-y-4 text-sm text-slate-300">
               <div>
                 <p className="text-slate-400">Musteri</p>
-                <p className="mt-1 font-bold text-white">{order.user.name}</p>
-                <p>{order.user.email}</p>
-                <p>{order.user.phone ?? "Telefon yok"}</p>
+                <p className="mt-1 font-bold text-white">{customer.name}</p>
+                <p>{customer.email}</p>
+                <p>{customer.phone || "Telefon yok"}</p>
+                {!order.userId ? (
+                  <p className="mt-2 inline-flex rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-emerald-100">
+                    Misafir checkout
+                  </p>
+                ) : null}
               </div>
               <div>
                 <p className="text-slate-400">Teslimat snapshot</p>

@@ -41,6 +41,22 @@ type AdminOrdersPageProps = {
   }>;
 };
 
+function getOrderCustomerLabel(order: {
+  user: { name: string | null; email: string } | null;
+  guestName: string | null;
+  guestEmail: string | null;
+}) {
+  if (order.user) {
+    return order.user.name ? `${order.user.name} / ${order.user.email}` : order.user.email;
+  }
+
+  if (order.guestName && order.guestEmail) {
+    return `${order.guestName} / ${order.guestEmail}`;
+  }
+
+  return order.guestName ?? order.guestEmail ?? "Misafir siparisi";
+}
+
 function buildOrdersLink(
   current: Record<string, string | undefined>,
   updates: Record<string, string | undefined>
@@ -99,7 +115,9 @@ export default async function AdminOrdersPage({ searchParams }: AdminOrdersPageP
             { orderNumber: { contains: q, mode: "insensitive" } },
             { user: { name: { contains: q, mode: "insensitive" } } },
             { user: { email: { contains: q, mode: "insensitive" } } },
-            { shippingCity: { contains: q, mode: "insensitive" } } ,
+            { guestName: { contains: q, mode: "insensitive" } },
+            { guestEmail: { contains: q, mode: "insensitive" } },
+            { shippingCity: { contains: q, mode: "insensitive" } },
             { shippingDistrict: { contains: q, mode: "insensitive" } }
           ]
         }
@@ -169,7 +187,11 @@ export default async function AdminOrdersPage({ searchParams }: AdminOrdersPageP
         description="Filtreleri, durum guncellemelerini ve operasyon notlarini tek ekranda tutup siparis akisini dagitmadan yonet."
         actions={
           <>
-            <Button asChild variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10">
+            <Button
+              asChild
+              variant="outline"
+              className="border-white/10 bg-white/5 text-white hover:bg-white/10"
+            >
               <Link href={exportHref}>CSV disa aktar</Link>
             </Button>
             <Button asChild className="bg-emerald-400 text-slate-950 hover:bg-emerald-300">
@@ -249,12 +271,15 @@ export default async function AdminOrdersPage({ searchParams }: AdminOrdersPageP
                       <span className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-emerald-100">
                         {order.payment?.status ?? "NO_PAYMENT"}
                       </span>
+                      {!order.userId ? (
+                        <span className="rounded-full border border-sky-400/20 bg-sky-500/10 px-3 py-1 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-sky-100">
+                          Guest
+                        </span>
+                      ) : null}
                     </div>
-                    <p className="text-sm text-slate-300">
-                      {order.user.name} · {order.user.email}
-                    </p>
+                    <p className="text-sm text-slate-300">{getOrderCustomerLabel(order)}</p>
                     <p className="text-sm text-slate-400">
-                      {order.shippingCity}/{order.shippingDistrict} · {order.paymentMethod}
+                      {order.shippingCity}/{order.shippingDistrict} / {order.paymentMethod}
                     </p>
                     <p className="text-sm text-slate-400">
                       {order.items.map((item) => `${item.productName} x ${item.quantity}`).join(", ")}

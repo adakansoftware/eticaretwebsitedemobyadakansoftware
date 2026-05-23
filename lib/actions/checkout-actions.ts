@@ -3,17 +3,19 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCart, calculateCartTotals } from "@/lib/cart";
-import { requireUser } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { checkoutSchema } from "@/lib/validators";
 import { getEffectiveUnitPrice } from "@/lib/commerce";
+import { createGuestOrderAccessToken } from "@/lib/order-access";
 
 export async function checkoutAction(formData: FormData) {
-  const user = await requireUser();
+  const user = await getCurrentUser();
   const parsed = checkoutSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? "Gecersiz checkout");
   }
 
+  const isGuestCheckout = !user;
   const normalizedCouponCode = parsed.data.couponCode?.trim().toUpperCase() || undefined;
   const cart = await getCart();
   const fullCart = await prisma.cart.findUnique({
@@ -33,12 +35,36 @@ export async function checkoutAction(formData: FormData) {
     throw new Error("Sepet bos");
   }
 
-  const address = await prisma.address.findFirst({
-    where: { id: parsed.data.addressId, userId: user.id }
-  });
-  if (!address) {
+  const address = !isGuestCheckout && user
+    ? await prisma.address.findFirst({
+        where: { id: parsed.data.addressId, userId: user.id }
+      })
+    : null;
+  if (!isGuestCheckout && !address) {
     throw new Error("Adres bulunamadi");
   }
+
+  const shippingSnapshot = isGuestCheckout
+    ? {
+        guestEmail: parsed.data.guestEmail!,
+        guestName: parsed.data.guestName!,
+        addressId: null,
+        shippingFullName: parsed.data.guestName!,
+        shippingPhone: parsed.data.guestPhone!,
+        shippingCity: parsed.data.guestCity!,
+        shippingDistrict: parsed.data.guestDistrict!,
+        shippingAddress: parsed.data.guestAddress!
+      }
+    : {
+        guestEmail: null,
+        guestName: null,
+        addressId: address!.id,
+        shippingFullName: address!.fullName,
+        shippingPhone: address!.phone,
+        shippingCity: address!.city,
+        shippingDistrict: address!.district,
+        shippingAddress: address!.address
+      };
 
   const totals = await calculateCartTotals(cart.id, normalizedCouponCode);
   const order = await prisma.$transaction(async (tx) => {
@@ -108,8 +134,7 @@ export async function checkoutAction(formData: FormData) {
     const created = await tx.order.create({
       data: {
         orderNumber: `ADK-${Date.now()}`,
-        userId: user.id,
-        addressId: address.id,
+        userId: user?.id ?? null,
         couponCode,
         status: parsed.data.paymentMethod === "BANK_TRANSFER" ? "WAITING_PAYMENT" : "PENDING",
         paymentMethod: parsed.data.paymentMethod,
@@ -118,11 +143,7 @@ export async function checkoutAction(formData: FormData) {
         shippingTotal: totals.shippingTotal,
         grandTotal: totals.grandTotal,
         customerNote: parsed.data.customerNote,
-        shippingFullName: address.fullName,
-        shippingPhone: address.phone,
-        shippingCity: address.city,
-        shippingDistrict: address.district,
-        shippingAddress: address.address,
+        ...shippingSnapshot,
         items: {
           create: fullCart.items.map((item) => {
             const unitPrice = getEffectiveUnitPrice(item.product);
@@ -157,5 +178,10 @@ export async function checkoutAction(formData: FormData) {
     return created;
   });
 
-  redirect(`/orders/${order.id}/success`);
+  if (order.userId) {
+    redirect(`/orders/${order.id}/success`);
+  }
+
+  const accessToken = await createGuestOrderAccessToken(order.id);
+  redirect(`/orders/${order.id}/success?access=${encodeURIComponent(accessToken)}`);
 }

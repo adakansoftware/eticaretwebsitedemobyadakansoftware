@@ -4,6 +4,20 @@ import { getCurrentUser } from "@/lib/auth";
 import { toCsvContent } from "@/lib/csv";
 import { prisma } from "@/lib/prisma";
 
+function getOrderCustomerName(order: {
+  user: { name: string | null } | null;
+  guestName: string | null;
+}) {
+  return order.user?.name ?? order.guestName ?? "Misafir siparisi";
+}
+
+function getOrderCustomerEmail(order: {
+  user: { email: string } | null;
+  guestEmail: string | null;
+}) {
+  return order.user?.email ?? order.guestEmail ?? "";
+}
+
 export async function GET(request: Request) {
   const currentUser = await getCurrentUser();
   if (!currentUser || currentUser.role !== "ADMIN") {
@@ -38,6 +52,8 @@ export async function GET(request: Request) {
             { orderNumber: { contains: q, mode: "insensitive" } },
             { user: { name: { contains: q, mode: "insensitive" } } },
             { user: { email: { contains: q, mode: "insensitive" } } },
+            { guestName: { contains: q, mode: "insensitive" } },
+            { guestEmail: { contains: q, mode: "insensitive" } },
             { shippingCity: { contains: q, mode: "insensitive" } },
             { shippingDistrict: { contains: q, mode: "insensitive" } }
           ]
@@ -70,8 +86,8 @@ export async function GET(request: Request) {
     ],
     orders.map((order) => [
       order.orderNumber,
-      order.user.name,
-      order.user.email,
+      getOrderCustomerName(order),
+      getOrderCustomerEmail(order),
       order.status,
       order.payment?.status ?? "KAYIT_YOK",
       order.paymentMethod,

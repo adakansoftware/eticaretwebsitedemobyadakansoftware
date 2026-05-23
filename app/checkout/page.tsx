@@ -2,19 +2,21 @@ import Link from "next/link";
 import { Header } from "@/components/storefront/header";
 import { Button } from "@/components/ui/button";
 import { checkoutAction } from "@/lib/actions/checkout-actions";
+import { getCurrentUser } from "@/lib/auth";
 import { calculateCartTotals, getCart } from "@/lib/cart";
-import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getSiteSettings } from "@/lib/site-settings";
 import { formatPrice } from "@/lib/utils";
 
 export default async function CheckoutPage() {
-  const user = await requireUser();
+  const user = await getCurrentUser();
   const [addresses, cart, settings] = await Promise.all([
-    prisma.address.findMany({
-      where: { userId: user.id },
-      orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }]
-    }),
+    user
+      ? prisma.address.findMany({
+          where: { userId: user.id },
+          orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }]
+        })
+      : Promise.resolve([]),
     getCart(),
     getSiteSettings()
   ]);
@@ -25,6 +27,8 @@ export default async function CheckoutPage() {
     discountTotal: 0,
     grandTotal: 0
   }));
+
+  const hasSavedAddresses = user ? addresses.length > 0 : true;
 
   return (
     <>
@@ -39,12 +43,13 @@ export default async function CheckoutPage() {
               Checkout
             </h1>
             <p className="mt-3 text-base leading-7 text-slate-600">
-              Siparis, stok ve toplamlar veritabani uzerinden son kez dogrulanir. Banka
-              havalesi ve kapida odeme akislarina uygun bir temel burada calisir.
+              Siparis, stok ve toplamlar veritabani uzerinden son kez dogrulanir. Kayitli
+              kullanicilar adres secerek, misafirler ise teslimat bilgilerini dogrudan yazarak
+              siparis olusturabilir.
             </p>
           </div>
 
-          {addresses.length === 0 ? (
+          {user && addresses.length === 0 ? (
             <div className="mt-8 rounded-[2rem] border border-amber-200 bg-amber-50 p-6 text-amber-950">
               <p className="font-bold">Checkout icin once teslimat adresi eklenmeli.</p>
               <p className="mt-2 text-sm leading-6 text-amber-900">
@@ -56,31 +61,115 @@ export default async function CheckoutPage() {
             </div>
           ) : null}
 
+          {!user ? (
+            <div className="mt-8 rounded-[2rem] border border-emerald-200 bg-emerald-50 p-6 text-emerald-950">
+              <p className="font-bold">Misafir checkout aktif</p>
+              <p className="mt-2 text-sm leading-6 text-emerald-900">
+                Hesap acmadan siparis verebilirsin. Siparis ozeti ve sonraki bilgilendirmeler
+                girdigin e-posta adresine gonderilir.
+              </p>
+              <Link href="/login" className="mt-4 inline-flex font-bold underline">
+                Hesabim var, giris yapmak istiyorum
+              </Link>
+            </div>
+          ) : null}
+
           <div className="mt-10 grid gap-8 lg:grid-cols-[1.1fr_.9fr]">
             <form action={checkoutAction} className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+              <input type="hidden" name="guestMode" value={user ? "false" : "true"} />
+
               <div className="grid gap-6">
-                <div>
-                  <label className="block text-sm font-bold text-slate-900">Teslimat adresi</label>
-                  <select
-                    name="addressId"
-                    className="mt-2 h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-emerald-700"
-                    disabled={addresses.length === 0}
-                  >
-                    {addresses.map((address) => (
-                      <option key={address.id} value={address.id}>
-                        {address.title} - {address.city}/{address.district}
-                        {address.isDefault ? " (Varsayilan)" : ""}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {user ? (
+                  <div>
+                    <label className="block text-sm font-bold text-slate-900">Teslimat adresi</label>
+                    <select
+                      name="addressId"
+                      className="mt-2 h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-emerald-700"
+                      disabled={addresses.length === 0}
+                    >
+                      {addresses.map((address) => (
+                        <option key={address.id} value={address.id}>
+                          {address.title} - {address.city}/{address.district}
+                          {address.isDefault ? " (Varsayilan)" : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-bold text-slate-900">Ad soyad</label>
+                      <input
+                        name="guestName"
+                        defaultValue=""
+                        placeholder="Teslim alacak kisi"
+                        className="mt-2 h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-emerald-700"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-900">E-posta</label>
+                      <input
+                        name="guestEmail"
+                        type="email"
+                        placeholder="E-posta adresi"
+                        className="mt-2 h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-emerald-700"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-900">Telefon</label>
+                      <input
+                        name="guestPhone"
+                        placeholder="Telefon numarasi"
+                        className="mt-2 h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-emerald-700"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-900">Sehir</label>
+                      <input
+                        name="guestCity"
+                        placeholder="Sehir"
+                        className="mt-2 h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-emerald-700"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-900">Ilce</label>
+                      <input
+                        name="guestDistrict"
+                        placeholder="Ilce"
+                        className="mt-2 h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-emerald-700"
+                        required
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-bold text-slate-900">Adres</label>
+                      <textarea
+                        name="guestAddress"
+                        placeholder="Mahalle, sokak, bina ve daire bilgisi"
+                        className="mt-2 min-h-28 w-full rounded-2xl border border-slate-200 p-4 text-sm outline-none transition focus:border-emerald-700"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-900">Posta kodu</label>
+                      <input
+                        name="guestPostalCode"
+                        placeholder="Opsiyonel"
+                        className="mt-2 h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-emerald-700"
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-bold text-slate-900">Odeme yontemi</label>
                   <select
                     name="paymentMethod"
                     className="mt-2 h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-emerald-700"
-                    disabled={addresses.length === 0}
+                    disabled={!hasSavedAddresses}
                   >
                     <option value="BANK_TRANSFER">Banka havalesi / EFT</option>
                     <option value="CASH_ON_DELIVERY">Kapida odeme</option>
@@ -109,7 +198,7 @@ export default async function CheckoutPage() {
                     defaultValue={cart.couponCode ?? ""}
                     placeholder="Opsiyonel kupon kodu"
                     className="mt-2 h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-emerald-700"
-                    disabled={addresses.length === 0}
+                    disabled={!hasSavedAddresses}
                   />
                 </div>
 
@@ -119,11 +208,11 @@ export default async function CheckoutPage() {
                     name="customerNote"
                     placeholder="Kurye, teslimat veya operasyon notu"
                     className="mt-2 min-h-28 w-full rounded-2xl border border-slate-200 p-4 text-sm outline-none transition focus:border-emerald-700"
-                    disabled={addresses.length === 0}
+                    disabled={!hasSavedAddresses}
                   />
                 </div>
 
-                <Button className="w-full" size="lg" disabled={addresses.length === 0 || cart.items.length === 0}>
+                <Button className="w-full" size="lg" disabled={!hasSavedAddresses || cart.items.length === 0}>
                   Siparisi olustur
                 </Button>
               </div>

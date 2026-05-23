@@ -255,8 +255,10 @@ model CartItem {
 model Order {
   id               String        @id @default(cuid())
   orderNumber      String        @unique
-  userId           String
+  userId           String?
   addressId        String?
+  guestEmail       String?
+  guestName        String?
   status           OrderStatus   @default(PENDING)
   paymentMethod    PaymentMethod
   couponCode       String?
@@ -274,7 +276,7 @@ model Order {
   trackingNumber   String?
   trackingCarrier  String?
   inventoryRestoredAt DateTime?
-  user             User          @relation(fields: [userId], references: [id])
+  user             User?         @relation(fields: [userId], references: [id])
   address          Address?      @relation(fields: [addressId], references: [id])
   items            OrderItem[]
   payment          Payment?

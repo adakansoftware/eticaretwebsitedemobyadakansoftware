@@ -12,6 +12,22 @@ function getSince24HoursDate() {
   return new Date(Date.now() - 24 * 60 * 60 * 1000);
 }
 
+function getOrderContactLabel(order: {
+  user: { name: string | null; email: string } | null;
+  guestName: string | null;
+  guestEmail: string | null;
+}) {
+  if (order.user) {
+    return order.user.name ? `${order.user.name} · ${order.user.email}` : order.user.email;
+  }
+
+  if (order.guestName && order.guestEmail) {
+    return `${order.guestName} · ${order.guestEmail}`;
+  }
+
+  return order.guestName ?? order.guestEmail ?? "Misafir siparisi";
+}
+
 export default async function AdminDashboardPage() {
   const since24h = getSince24HoursDate();
   const [
@@ -157,7 +173,7 @@ export default async function AdminDashboardPage() {
                         {order.payment?.status ?? "WAITING"}
                       </span>
                     </div>
-                    <p className="text-sm text-slate-300">{order.user.name}</p>
+                    <p className="text-sm text-slate-300">{getOrderContactLabel(order)}</p>
                     <p className="text-sm text-slate-400">
                       {order.items.length} kalem · {order.shippingCity}/{order.shippingDistrict}
                     </p>

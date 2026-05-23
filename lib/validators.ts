@@ -53,16 +53,85 @@ export const couponCodeSchema = z.object({
     .transform((value) => value?.trim().toUpperCase() || undefined)
 });
 
-export const checkoutSchema = z.object({
-  addressId: z.string().min(1),
-  paymentMethod: z.enum(["BANK_TRANSFER", "CASH_ON_DELIVERY"]),
-  customerNote: z.string().max(500).optional(),
-  couponCode: z
-    .string()
-    .max(32)
-    .optional()
-    .transform((value) => value?.trim().toUpperCase() || undefined)
-});
+export const checkoutSchema = z
+  .object({
+    guestMode: z
+      .union([z.literal("true"), z.literal("false"), z.literal("")])
+      .optional()
+      .transform((value) => value === "true"),
+    addressId: z.string().optional().transform((value) => value?.trim() || undefined),
+    paymentMethod: z.enum(["BANK_TRANSFER", "CASH_ON_DELIVERY"]),
+    customerNote: z.string().max(500).optional().transform((value) => value || undefined),
+    couponCode: z
+      .string()
+      .max(32)
+      .optional()
+      .transform((value) => value?.trim().toUpperCase() || undefined),
+    guestName: z.string().optional().transform((value) => value?.trim() || undefined),
+    guestEmail: z.string().optional().transform((value) => value?.trim() || undefined),
+    guestPhone: z.string().optional().transform((value) => value?.trim() || undefined),
+    guestCity: z.string().optional().transform((value) => value?.trim() || undefined),
+    guestDistrict: z.string().optional().transform((value) => value?.trim() || undefined),
+    guestAddress: z.string().optional().transform((value) => value?.trim() || undefined),
+    guestPostalCode: z.string().optional().transform((value) => value?.trim() || undefined)
+  })
+  .superRefine((value, ctx) => {
+    if (value.guestMode) {
+      if (!value.guestName || value.guestName.length < 2) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["guestName"],
+          message: "Ad soyad en az 2 karakter olmali"
+        });
+      }
+
+      if (!value.guestEmail || !z.string().email().safeParse(value.guestEmail).success) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["guestEmail"],
+          message: "Gecerli bir e-posta adresi gir"
+        });
+      }
+
+      if (!value.guestPhone || value.guestPhone.length < 10) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["guestPhone"],
+          message: "Telefon numarasi gecersiz"
+        });
+      }
+
+      if (!value.guestCity || value.guestCity.length < 2) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["guestCity"],
+          message: "Sehir bilgisi gerekli"
+        });
+      }
+
+      if (!value.guestDistrict || value.guestDistrict.length < 2) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["guestDistrict"],
+          message: "Ilce bilgisi gerekli"
+        });
+      }
+
+      if (!value.guestAddress || value.guestAddress.length < 10) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["guestAddress"],
+          message: "Adres detayi en az 10 karakter olmali"
+        });
+      }
+    } else if (!value.addressId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["addressId"],
+        message: "Teslimat adresi secilmeli"
+      });
+    }
+  });
 
 export const addressSchema = z.object({
   title: z.string().min(2, "Adres basligi en az 2 karakter olmali"),

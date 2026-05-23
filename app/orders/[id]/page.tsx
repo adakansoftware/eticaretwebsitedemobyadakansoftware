@@ -3,8 +3,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Header } from "@/components/storefront/header";
-import { requireUser } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { getOrderStatusLabel, getTrackingCarrierLabel } from "@/lib/order-labels";
+import { verifyGuestOrderAccessToken } from "@/lib/order-access";
 import { prisma } from "@/lib/prisma";
 import { getSiteSettings } from "@/lib/site-settings";
 import { formatPrice } from "@/lib/utils";
@@ -15,14 +16,21 @@ export const metadata: Metadata = {
 
 type OrderDetailPageProps = {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ access?: string }>;
 };
 
-export default async function OrderDetailPage({ params }: OrderDetailPageProps) {
-  const user = await requireUser();
+export default async function OrderDetailPage({ params, searchParams }: OrderDetailPageProps) {
+  const user = await getCurrentUser();
   const { id } = await params;
+  const access = (await searchParams)?.access?.trim();
+  const guestAccessAllowed = !user && access ? await verifyGuestOrderAccessToken(access, id) : false;
   const [order, settings] = await Promise.all([
     prisma.order.findFirst({
-      where: { id, userId: user.id },
+      where: user
+        ? { id, userId: user.id }
+        : guestAccessAllowed
+          ? { id, userId: null }
+          : { id: "__forbidden__" },
       include: {
         payment: true,
         items: true
@@ -135,6 +143,7 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
               <h2 className="text-2xl font-black text-slate-950">Teslimat bilgisi</h2>
               <div className="mt-4 space-y-2 text-sm text-slate-700">
                 <p className="font-bold text-slate-950">{order.shippingFullName}</p>
+                {!order.userId && order.guestEmail ? <p>{order.guestEmail}</p> : null}
                 <p>{order.shippingPhone}</p>
                 <p>
                   {order.shippingCity} / {order.shippingDistrict}
