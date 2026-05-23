@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { ImageUploadField } from "@/components/admin/image-upload-field";
 import { Input } from "@/components/ui/input";
 import {
   createBrandAction,
@@ -100,9 +101,9 @@ function BrandForm({ action, submitLabel, brandId, defaultValues }: BrandFormPro
         />
       </div>
 
-      <Input
+      <ImageUploadField
         name="imageUrl"
-        type="url"
+        folder="brands"
         placeholder="Marka logo veya gorsel URL"
         defaultValue={defaultValues?.imageUrl}
       />

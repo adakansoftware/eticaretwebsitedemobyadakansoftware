@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { AdminActionForm } from "@/components/admin/admin-action-form";
 import { ConfirmSubmitButton } from "@/components/admin/confirm-submit-button";
+import { ImageUploadField } from "@/components/admin/image-upload-field";
 import { AdminSubmitButton } from "@/components/admin/admin-submit-button";
 import { Input } from "@/components/ui/input";
 import {
@@ -135,13 +136,15 @@ function BannerForm({ action, submitLabel, bannerId, resetOnSuccess, defaultValu
           placeholder="Banner alt basligi"
           defaultValue={defaultValues?.subtitle}
         />
-        <Input
-          name="imageUrl"
-          type="url"
-          placeholder="Banner gorsel URL"
-          defaultValue={defaultValues?.imageUrl}
-          required
-        />
+        <div className="md:col-span-2">
+          <ImageUploadField
+            name="imageUrl"
+            folder="banners"
+            placeholder="Banner gorsel URL"
+            defaultValue={defaultValues?.imageUrl}
+            required
+          />
+        </div>
         <Input
           name="ctaLabel"
           placeholder="CTA metni"

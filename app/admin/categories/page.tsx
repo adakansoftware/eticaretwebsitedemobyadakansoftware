@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { ImageUploadField } from "@/components/admin/image-upload-field";
 import { Input } from "@/components/ui/input";
 import {
   createCategoryAction,
@@ -103,9 +104,9 @@ function CategoryForm({ action, submitLabel, categoryId, defaultValues }: Catego
         />
       </div>
 
-      <Input
+      <ImageUploadField
         name="imageUrl"
-        type="url"
+        folder="categories"
         placeholder="Kategori gorsel URL"
         defaultValue={defaultValues?.imageUrl}
       />

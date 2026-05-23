@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ActionResult } from "@/lib/action-response";
 import { AdminActionForm } from "@/components/admin/admin-action-form";
 import { ConfirmSubmitButton } from "@/components/admin/confirm-submit-button";
+import { ImageUploadField } from "@/components/admin/image-upload-field";
 import { AdminSubmitButton } from "@/components/admin/admin-submit-button";
 import {
   AdminFilterBar,
@@ -388,12 +389,12 @@ function ProductForm({
           className={inputClass}
         />
         <Input name="barcode" placeholder="Barcode" defaultValue={defaultValues?.barcode} className={inputClass} />
-        <Input
+        <ImageUploadField
           name="imageUrl"
-          type="url"
+          folder="products"
           placeholder="https://..."
           defaultValue={defaultValues?.imageUrl}
-          className={inputClass}
+          className="md:col-span-2"
         />
         <Input name="sku" placeholder="SKU" defaultValue={defaultValues?.sku} required className={inputClass} />
         <Input
