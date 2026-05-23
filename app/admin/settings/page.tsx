@@ -1,6 +1,8 @@
+import { AdminActionForm } from "@/components/admin/admin-action-form";
+import { AdminSubmitButton } from "@/components/admin/admin-submit-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { updateSiteSettingsAction } from "@/lib/actions/admin-settings-actions";
+import { updateSiteSettingsFormAction } from "@/lib/actions/admin-settings-actions";
 import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/utils";
 
@@ -54,7 +56,7 @@ export default async function AdminSettingsPage() {
         <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6">
           <h2 className="text-xl font-black text-white">Ayarlari duzenle</h2>
 
-          <form action={updateSiteSettingsAction} className="mt-6 grid gap-4">
+          <AdminActionForm action={updateSiteSettingsFormAction} className="mt-6 grid gap-4">
             <div className="grid gap-4 md:grid-cols-2">
               <Input name="siteName" defaultValue={settings?.siteName ?? ""} placeholder="Site adi" required />
               <Input name="logoUrl" type="url" defaultValue={settings?.logoUrl ?? ""} placeholder="Logo URL" />
@@ -116,8 +118,12 @@ export default async function AdminSettingsPage() {
               className="min-h-32 w-full rounded-2xl border border-white/10 bg-slate-950 p-4 text-sm text-white outline-none ring-white/10 transition focus:ring-4"
             />
 
-            <Button className="w-full md:w-auto">Ayarlari kaydet</Button>
-          </form>
+            <AdminSubmitButton
+              className="w-full md:w-auto"
+              idleLabel="Ayarlari kaydet"
+              pendingLabel="Ayarlar kaydediliyor..."
+            />
+          </AdminActionForm>
         </div>
       </section>
     </div>

@@ -1,11 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { actionError, actionSuccess, type ActionResult } from "@/lib/action-response";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { siteSettingsAdminSchema } from "@/lib/validators";
 
-export async function updateSiteSettingsAction(formData: FormData) {
+async function updateSiteSettings(formData: FormData) {
   await requireAdmin();
 
   const parsed = siteSettingsAdminSchema.safeParse(Object.fromEntries(formData));
@@ -33,4 +34,20 @@ export async function updateSiteSettingsAction(formData: FormData) {
   revalidatePath("/");
   revalidatePath("/cart");
   revalidatePath("/checkout");
+}
+
+export async function updateSiteSettingsAction(formData: FormData) {
+  await updateSiteSettings(formData);
+}
+
+export async function updateSiteSettingsFormAction(
+  _state: ActionResult | null,
+  formData: FormData
+): Promise<ActionResult> {
+  try {
+    await updateSiteSettings(formData);
+    return actionSuccess(undefined, "Site ayarları güncellendi.");
+  } catch (error) {
+    return actionError(error instanceof Error ? error.message : "Site ayarları güncellenemedi.");
+  }
 }

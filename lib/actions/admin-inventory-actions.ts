@@ -1,11 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { actionError, actionSuccess, type ActionResult } from "@/lib/action-response";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { inventoryAdjustmentSchema } from "@/lib/validators";
 
-export async function adjustInventoryAction(formData: FormData) {
+async function adjustInventory(formData: FormData) {
   await requireAdmin();
 
   const parsed = inventoryAdjustmentSchema.safeParse(Object.fromEntries(formData));
@@ -47,4 +48,20 @@ export async function adjustInventoryAction(formData: FormData) {
   revalidatePath("/admin/inventory");
   revalidatePath("/admin/products");
   revalidatePath("/products");
+}
+
+export async function adjustInventoryAction(formData: FormData) {
+  await adjustInventory(formData);
+}
+
+export async function adjustInventoryFormAction(
+  _state: ActionResult | null,
+  formData: FormData
+): Promise<ActionResult> {
+  try {
+    await adjustInventory(formData);
+    return actionSuccess(undefined, "Envanter güncellendi.");
+  } catch (error) {
+    return actionError(error instanceof Error ? error.message : "Envanter güncellenemedi.");
+  }
 }

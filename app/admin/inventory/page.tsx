@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { AdminActionForm } from "@/components/admin/admin-action-form";
+import { AdminSubmitButton } from "@/components/admin/admin-submit-button";
 import { Input } from "@/components/ui/input";
-import { adjustInventoryAction } from "@/lib/actions/admin-inventory-actions";
+import { adjustInventoryFormAction } from "@/lib/actions/admin-inventory-actions";
 import { DEFAULT_PAGE_SIZE, getPagination, getPaginationMeta, getPageValue } from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
 
@@ -69,7 +70,11 @@ export default async function AdminInventoryPage({ searchParams }: InventoryPage
       <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
         <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6">
           <h2 className="text-xl font-black text-white">Manuel stok duzelt</h2>
-          <form action={adjustInventoryAction} className="mt-6 grid gap-4">
+          <AdminActionForm
+            action={adjustInventoryFormAction}
+            className="mt-6 grid gap-4"
+            resetOnSuccess
+          >
             <select
               name="productId"
               className="h-11 rounded-2xl border border-white/10 bg-slate-950 px-4 text-sm text-white"
@@ -108,8 +113,12 @@ export default async function AdminInventoryPage({ searchParams }: InventoryPage
               required
             />
 
-            <Button className="w-full md:w-auto">Envanteri guncelle</Button>
-          </form>
+            <AdminSubmitButton
+              className="w-full md:w-auto"
+              idleLabel="Envanteri guncelle"
+              pendingLabel="Envanter guncelleniyor..."
+            />
+          </AdminActionForm>
         </div>
 
         <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6">

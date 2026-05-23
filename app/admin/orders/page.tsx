@@ -1,6 +1,9 @@
 import Link from "next/link";
+import { Prisma } from "@prisma/client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { updateAdminOrderAction } from "@/lib/actions/admin-order-actions";
+import { DEFAULT_PAGE_SIZE, getPageValue, getPagination, getPaginationMeta } from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/utils";
 
@@ -17,20 +20,126 @@ const orderStatuses = [
 
 const paymentStatuses = ["WAITING", "CONFIRMED", "REJECTED", "REFUNDED"] as const;
 
-export default async function AdminOrdersPage() {
-  const orders = await prisma.order.findMany({
-    include: { user: true, items: true, payment: true },
-    orderBy: { createdAt: "desc" }
-  });
+type AdminOrdersPageProps = {
+  searchParams?: Promise<{
+    q?: string;
+    status?: string;
+    paymentStatus?: string;
+    page?: string;
+  }>;
+};
+
+function buildOrdersLink(
+  current: Record<string, string | undefined>,
+  updates: Record<string, string | undefined>
+) {
+  const params = new URLSearchParams();
+
+  for (const [key, value] of Object.entries({ ...current, ...updates })) {
+    if (value) params.set(key, value);
+  }
+
+  if (!updates.page) {
+    params.delete("page");
+  }
+
+  const query = params.toString();
+  return query ? `/admin/orders?${query}` : "/admin/orders";
+}
+
+export default async function AdminOrdersPage({ searchParams }: AdminOrdersPageProps) {
+  const resolvedSearchParams = await searchParams;
+  const q = resolvedSearchParams?.q?.trim();
+  const status = resolvedSearchParams?.status?.trim();
+  const paymentStatus = resolvedSearchParams?.paymentStatus?.trim();
+  const page = getPageValue(resolvedSearchParams?.page, 1);
+
+  const orderStatusFilter = orderStatuses.find((item) => item === status);
+  const paymentStatusFilter = paymentStatuses.find((item) => item === paymentStatus);
+
+  const where: Prisma.OrderWhereInput = {
+    ...(orderStatusFilter ? { status: orderStatusFilter } : {}),
+    ...(paymentStatusFilter ? { payment: { is: { status: paymentStatusFilter } } } : {}),
+    ...(q
+      ? {
+          OR: [
+            { orderNumber: { contains: q, mode: "insensitive" } },
+            { user: { name: { contains: q, mode: "insensitive" } } },
+            { user: { email: { contains: q, mode: "insensitive" } } },
+            { shippingCity: { contains: q, mode: "insensitive" } },
+            { shippingDistrict: { contains: q, mode: "insensitive" } }
+          ]
+        }
+      : {})
+  };
+
+  const [totalItems, orders] = await Promise.all([
+    prisma.order.count({ where }),
+    prisma.order.findMany({
+      where,
+      include: { user: true, items: true, payment: true },
+      orderBy: { createdAt: "desc" },
+      ...getPagination(page, DEFAULT_PAGE_SIZE)
+    })
+  ]);
+
+  const pagination = getPaginationMeta(totalItems, page, DEFAULT_PAGE_SIZE);
+  const currentFilters = { q, status: orderStatusFilter, paymentStatus: paymentStatusFilter };
+  const exportHref = `/admin/orders/export?${new URLSearchParams(
+    Object.entries(currentFilters).filter(([, value]) => value) as Array<[string, string]>
+  ).toString()}`;
 
   return (
     <div className="space-y-8">
       <section>
-        <h1 className="text-4xl font-black tracking-tight text-white">Siparisler</h1>
-        <p className="mt-3 max-w-3xl text-base leading-7 text-slate-300">
-          Siparis durumu, odeme durumu ve ic operasyon notlari tek panelden yonetilir.
-          Detay sayfasi uzerinden adres snapshot ve urun kirilimlarini da gorebilirsin.
-        </p>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h1 className="text-4xl font-black tracking-tight text-white">Siparişler</h1>
+            <p className="mt-3 max-w-3xl text-base leading-7 text-slate-300">
+              Sipariş durumu, ödeme durumu ve iç operasyon notlarını filtreleyerek yönet.
+            </p>
+          </div>
+
+          <Button asChild variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10">
+            <Link href={exportHref}>CSV dışa aktar</Link>
+          </Button>
+        </div>
+      </section>
+
+      <section className="rounded-[2rem] border border-white/10 bg-white/5 p-6">
+        <form className="grid gap-4 xl:grid-cols-[1fr_220px_220px_auto]">
+          <Input
+            name="q"
+            defaultValue={q}
+            placeholder="Sipariş no, müşteri veya şehir ara"
+            className="border-white/10 bg-slate-950 text-white ring-white/10"
+          />
+          <select
+            name="status"
+            defaultValue={orderStatusFilter ?? ""}
+            className="h-11 rounded-2xl border border-white/10 bg-slate-950 px-4 text-sm text-white"
+          >
+            <option value="">Tüm sipariş durumları</option>
+            {orderStatuses.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </select>
+          <select
+            name="paymentStatus"
+            defaultValue={paymentStatusFilter ?? ""}
+            className="h-11 rounded-2xl border border-white/10 bg-slate-950 px-4 text-sm text-white"
+          >
+            <option value="">Tüm ödeme durumları</option>
+            {paymentStatuses.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </select>
+          <Button className="w-full xl:w-auto">Filtrele</Button>
+        </form>
       </section>
 
       <section className="grid gap-4">
@@ -54,7 +163,7 @@ export default async function AdminOrdersPage() {
                     {order.status} · {order.paymentMethod}
                   </p>
                   <p className="text-sm text-slate-400">
-                    Odeme: {order.payment?.status ?? "Kayit yok"}
+                    Ödeme: {order.payment?.status ?? "Kayıt yok"}
                   </p>
                 </div>
               </div>
@@ -68,9 +177,9 @@ export default async function AdminOrdersPage() {
                     defaultValue={order.status}
                     className="h-11 rounded-2xl border border-white/10 bg-slate-950 px-4 text-sm text-white"
                   >
-                    {orderStatuses.map((status) => (
-                      <option key={status} value={status}>
-                        {status}
+                    {orderStatuses.map((item) => (
+                      <option key={item} value={item}>
+                        {item}
                       </option>
                     ))}
                   </select>
@@ -80,9 +189,9 @@ export default async function AdminOrdersPage() {
                     defaultValue={order.payment?.status ?? "WAITING"}
                     className="h-11 rounded-2xl border border-white/10 bg-slate-950 px-4 text-sm text-white"
                   >
-                    {paymentStatuses.map((status) => (
-                      <option key={status} value={status}>
-                        {status}
+                    {paymentStatuses.map((item) => (
+                      <option key={item} value={item}>
+                        {item}
                       </option>
                     ))}
                   </select>
@@ -94,8 +203,8 @@ export default async function AdminOrdersPage() {
                     className="min-h-24 w-full rounded-2xl border border-white/10 bg-slate-950 p-4 text-sm text-white outline-none ring-white/10 transition focus:ring-4"
                   />
 
-                  <Button className="h-11">Guncelle</Button>
-                  <Button asChild variant="outline" className="h-11">
+                  <Button className="h-11">Güncelle</Button>
+                  <Button asChild variant="outline" className="h-11 border-white/10 bg-white/5 text-white hover:bg-white/10">
                     <Link href={`/admin/orders/${order.id}`}>Detay</Link>
                   </Button>
                 </div>
@@ -104,10 +213,34 @@ export default async function AdminOrdersPage() {
           ))
         ) : (
           <div className="rounded-[2rem] border border-dashed border-white/15 bg-white/5 p-8 text-slate-300">
-            Henuz siparis yok.
+            Filtreye uyan sipariş bulunamadı.
           </div>
         )}
       </section>
+
+      {pagination.totalPages > 1 ? (
+        <section className="flex items-center justify-between rounded-[2rem] border border-white/10 bg-white/5 p-4">
+          <Link
+            href={buildOrdersLink(currentFilters, {
+              page: pagination.hasPreviousPage ? String(page - 1) : String(page)
+            })}
+            className={`rounded-full px-4 py-2 text-sm font-bold ${pagination.hasPreviousPage ? "bg-white text-slate-950" : "pointer-events-none bg-white/10 text-slate-500"}`}
+          >
+            Önceki
+          </Link>
+          <p className="text-sm text-slate-300">
+            Sayfa {pagination.page} / {pagination.totalPages}
+          </p>
+          <Link
+            href={buildOrdersLink(currentFilters, {
+              page: pagination.hasNextPage ? String(page + 1) : String(page)
+            })}
+            className={`rounded-full px-4 py-2 text-sm font-bold ${pagination.hasNextPage ? "bg-white text-slate-950" : "pointer-events-none bg-white/10 text-slate-500"}`}
+          >
+            Sonraki
+          </Link>
+        </section>
+      ) : null}
     </div>
   );
 }

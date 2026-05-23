@@ -60,10 +60,24 @@ export default async function AdminCustomersPage({ searchParams }: AdminCustomer
   return (
     <div className="space-y-8">
       <section>
-        <h1 className="text-4xl font-black tracking-tight text-white">Müşteriler</h1>
-        <p className="mt-3 max-w-2xl text-base leading-7 text-slate-300">
-          Hesap durumu, sipariş geçmişi, adres yoğunluğu ve wishlist verisini tek panelden izle.
-        </p>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h1 className="text-4xl font-black tracking-tight text-white">Müşteriler</h1>
+            <p className="mt-3 max-w-2xl text-base leading-7 text-slate-300">
+              Hesap durumu, sipariş geçmişi, adres yoğunluğu ve wishlist verisini tek panelden izle.
+            </p>
+          </div>
+
+          <Button asChild variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10">
+            <Link
+              href={`/admin/customers/export?${new URLSearchParams(
+                Object.entries({ q, role: roleFilter }).filter(([, value]) => value) as Array<[string, string]>
+              ).toString()}`}
+            >
+              CSV dışa aktar
+            </Link>
+          </Button>
+        </div>
       </section>
 
       <section className="rounded-[2rem] border border-white/10 bg-white/5 p-6">
