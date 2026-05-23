@@ -1,9 +1,9 @@
-import Image from "next/image";
 import Link from "next/link";
 import { ChevronRight, ShieldCheck, Star, Truck } from "lucide-react";
 import { notFound } from "next/navigation";
 import { Header } from "@/components/storefront/header";
-import { AddToCartButton } from "@/components/storefront/add-to-cart-button";
+import { ProductImageGallery } from "@/components/storefront/product-image-gallery";
+import { ProductPurchasePanel } from "@/components/storefront/product-purchase-panel";
 import { WishlistButton } from "@/components/storefront/wishlist-button";
 import { getCurrentUser } from "@/lib/auth";
 import { getDiscountPercentage, getEffectiveUnitPrice } from "@/lib/commerce";
@@ -24,6 +24,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
       images: true,
       category: true,
       brand: true,
+      variants: { orderBy: [{ name: "asc" }, { value: "asc" }] },
       reviews: {
         where: { status: "APPROVED" },
         include: { user: true },
@@ -34,9 +35,6 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
 
   if (!product || !product.isActive) notFound();
 
-  const image =
-    product.images[0]?.url ??
-    "https://images.unsplash.com/photo-1523275335684-37898b6baf30";
   const isWishlisted = user
     ? Boolean(
         await prisma.wishlistItem.findUnique({
@@ -68,23 +66,15 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
         </div>
 
         <section className="grid gap-8 lg:grid-cols-[1fr_.95fr]">
-          <div className="overflow-hidden rounded-[2.6rem] border border-slate-200 bg-white/80 p-4 shadow-[0_24px_80px_rgba(15,23,42,0.06)] backdrop-blur">
-            <div className="relative aspect-square overflow-hidden rounded-[2rem] bg-gradient-to-br from-stone-100 via-stone-50 to-amber-50">
-              <Image
-                src={image}
-                alt={product.name}
-                fill
-                sizes="100vw"
-                priority
-                className="object-cover"
-              />
-              {discountPercentage > 0 ? (
-                <div className="absolute left-5 top-5 rounded-full bg-amber-500 px-4 py-2 text-sm font-black text-slate-950">
-                  %{discountPercentage} indirim
-                </div>
-              ) : null}
-            </div>
-          </div>
+          <ProductImageGallery
+            images={product.images.map((image) => ({
+              id: image.id,
+              url: image.url,
+              alt: image.alt
+            }))}
+            productName={product.name}
+            discountPercentage={discountPercentage}
+          />
 
           <div className="rounded-[2.6rem] border border-slate-200 bg-white/85 p-8 shadow-[0_24px_80px_rgba(15,23,42,0.06)] backdrop-blur">
             <p className="text-[0.72rem] font-bold uppercase tracking-[0.32em] text-amber-700">
@@ -150,7 +140,21 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
             </div>
 
             <div className="mt-8 grid max-w-md gap-3">
-              <AddToCartButton productId={product.id} />
+              <ProductPurchasePanel
+                productId={product.id}
+                productSlug={product.slug}
+                productPrice={Number(product.price)}
+                productSalePrice={product.salePrice ? Number(product.salePrice) : null}
+                productStock={product.stock}
+                variants={product.variants.map((variant) => ({
+                  id: variant.id,
+                  name: variant.name,
+                  value: variant.value,
+                  sku: variant.sku,
+                  stock: variant.stock,
+                  priceDiff: Number(variant.priceDiff)
+                }))}
+              />
               <WishlistButton
                 productId={product.id}
                 productSlug={product.slug}

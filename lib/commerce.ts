@@ -3,10 +3,18 @@ type PriceLike = {
   salePrice?: number | string | { toString(): string } | null;
 };
 
+type VariantPriceLike = {
+  priceDiff?: number | string | { toString(): string } | null;
+};
+
 export function getEffectiveUnitPrice(product: PriceLike) {
   const salePrice = product.salePrice == null ? null : Number(product.salePrice);
   const price = Number(product.price);
   return salePrice && salePrice > 0 ? salePrice : price;
+}
+
+export function getVariantUnitPrice(product: PriceLike, variant?: VariantPriceLike | null) {
+  return getEffectiveUnitPrice(product) + Number(variant?.priceDiff ?? 0);
 }
 
 export function getDiscountPercentage(

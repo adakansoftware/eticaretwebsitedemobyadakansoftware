@@ -23,9 +23,10 @@ async function getActiveCartId() {
 
 export async function addToCartAction(
   productId: string,
-  quantity = 1
+  quantity = 1,
+  variantId?: string
 ): Promise<ActionResult<{ cartId: string }>> {
-  const parsed = cartQuantitySchema.safeParse({ productId, quantity });
+  const parsed = cartQuantitySchema.safeParse({ productId, quantity, variantId });
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "Sepet istegi gecersiz");
   }
@@ -35,41 +36,57 @@ export async function addToCartAction(
     return actionError("Urun su anda sepete eklenemiyor");
   }
 
-  if (product.stock < parsed.data.quantity) {
+  const variant = parsed.data.variantId
+    ? await prisma.productVariant.findFirst({
+        where: {
+          id: parsed.data.variantId,
+          productId: parsed.data.productId
+        }
+      })
+    : null;
+
+  if (parsed.data.variantId && !variant) {
+    return actionError("Secilen varyant bulunamadi");
+  }
+
+  if (variant && variant.stock < parsed.data.quantity) {
+    return actionError("Secilen varyant icin yeterli stok yok");
+  }
+
+  if (!variant && product.stock < parsed.data.quantity) {
     return actionError("Secilen adet icin yeterli stok yok");
   }
 
   const cart = await getOrCreateCart();
-  const existingItem = await prisma.cartItem.findUnique({
+  const existingItem = await prisma.cartItem.findFirst({
     where: {
-      cartId_productId: {
-        cartId: cart.id,
-        productId: parsed.data.productId
-      }
+      cartId: cart.id,
+      productId: parsed.data.productId,
+      variantId: variant?.id ?? null
     }
   });
 
   const nextQuantity = (existingItem?.quantity ?? 0) + parsed.data.quantity;
-  if (nextQuantity > product.stock) {
+  const stockLimit = variant?.stock ?? product.stock;
+  if (nextQuantity > stockLimit) {
     return actionError("Sepetteki toplam adet stoktan fazla olamaz");
   }
 
-  await prisma.cartItem.upsert({
-    where: {
-      cartId_productId: {
+  if (existingItem) {
+    await prisma.cartItem.update({
+      where: { id: existingItem.id },
+      data: { quantity: nextQuantity }
+    });
+  } else {
+    await prisma.cartItem.create({
+      data: {
         cartId: cart.id,
-        productId: parsed.data.productId
+        productId: parsed.data.productId,
+        variantId: variant?.id ?? null,
+        quantity: parsed.data.quantity
       }
-    },
-    create: {
-      cartId: cart.id,
-      productId: parsed.data.productId,
-      quantity: parsed.data.quantity
-    },
-    update: {
-      quantity: nextQuantity
-    }
-  });
+    });
+  }
 
   revalidateCartSurface();
   return actionSuccess({ cartId: cart.id }, "Urun sepete eklendi");

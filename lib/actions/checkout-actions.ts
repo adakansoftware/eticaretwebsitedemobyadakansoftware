@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getCart, calculateCartTotals } from "@/lib/cart";
 import { getCurrentUser } from "@/lib/auth";
 import { checkoutSchema } from "@/lib/validators";
-import { getEffectiveUnitPrice } from "@/lib/commerce";
+import { getVariantUnitPrice } from "@/lib/commerce";
 import { createGuestOrderAccessToken } from "@/lib/order-access";
 
 export async function checkoutAction(formData: FormData) {
@@ -25,7 +25,8 @@ export async function checkoutAction(formData: FormData) {
         include: {
           product: {
             include: { images: { orderBy: { sortOrder: "asc" }, take: 1 }, brand: true }
-          }
+          },
+          variant: true
         }
       }
     }
@@ -110,15 +111,36 @@ export async function checkoutAction(formData: FormData) {
 
     for (const item of fullCart.items) {
       const product = await tx.product.findUnique({ where: { id: item.productId } });
-      if (!product || !product.isActive || product.stock < item.quantity) {
+      if (!product || !product.isActive) {
         throw new Error("Stok veya urun durumu degisti");
       }
 
-      const nextStock = product.stock - item.quantity;
-      await tx.product.update({
-        where: { id: product.id },
-        data: { stock: { decrement: item.quantity } }
-      });
+      const variant = item.variant
+        ? await tx.productVariant.findFirst({
+            where: { id: item.variant.id, productId: item.productId }
+          })
+        : null;
+
+      if (item.variant && (!variant || variant.stock < item.quantity)) {
+        throw new Error("Secilen varyantin stogu degisti");
+      }
+
+      if (!variant && product.stock < item.quantity) {
+        throw new Error("Stok veya urun durumu degisti");
+      }
+
+      const nextStock = (variant?.stock ?? product.stock) - item.quantity;
+      if (variant) {
+        await tx.productVariant.update({
+          where: { id: variant.id },
+          data: { stock: { decrement: item.quantity } }
+        });
+      } else {
+        await tx.product.update({
+          where: { id: product.id },
+          data: { stock: { decrement: item.quantity } }
+        });
+      }
 
       await tx.inventoryLog.create({
         data: {
@@ -146,14 +168,15 @@ export async function checkoutAction(formData: FormData) {
         ...shippingSnapshot,
         items: {
           create: fullCart.items.map((item) => {
-            const unitPrice = getEffectiveUnitPrice(item.product);
+            const unitPrice = getVariantUnitPrice(item.product, item.variant);
+            const variantLabel = item.variant ? ` (${item.variant.name}: ${item.variant.value})` : "";
             return {
               productId: item.productId,
-              productName: item.product.name,
+              productName: `${item.product.name}${variantLabel}`,
               productSlug: item.product.slug,
               productImage: item.product.images[0]?.url,
               productBrand: item.product.brand?.name,
-              sku: item.product.sku,
+              sku: item.variant?.sku ?? item.product.sku,
               unitPrice,
               quantity: item.quantity,
               lineTotal: unitPrice * item.quantity

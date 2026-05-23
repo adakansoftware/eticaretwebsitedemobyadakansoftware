@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getSiteSettings } from "@/lib/site-settings";
 import { getSession } from "@/lib/auth";
-import { getEffectiveUnitPrice } from "@/lib/commerce";
+import { getVariantUnitPrice } from "@/lib/commerce";
 
 const cartCookie = "adakan_cart";
 
@@ -15,7 +15,8 @@ const cartInclude = {
           images: true,
           brand: true
         }
-      }
+      },
+      variant: true
     }
   }
 } satisfies Prisma.CartInclude;
@@ -109,12 +110,12 @@ export async function calculateCartTotals(cartId?: string, couponCode?: string) 
     };
   }
 
-  const cart = await prisma.cart.findUnique({
+  const fullCart = await prisma.cart.findUnique({
     where: { id: cartId },
-    include: { items: { include: { product: true } } }
+    include: { items: { include: { product: true, variant: true } } }
   });
 
-  if (!cart) {
+  if (!fullCart) {
     return {
       subtotal: 0,
       discountTotal: 0,
@@ -124,16 +125,20 @@ export async function calculateCartTotals(cartId?: string, couponCode?: string) 
   }
 
   let subtotal = 0;
-  for (const item of cart.items) {
+  for (const item of fullCart.items) {
     if (!item.product.isActive) throw new Error(`${item.product.name} artik aktif degil`);
-    if (item.quantity > item.product.stock) {
+    const availableStock = item.variant?.stock ?? item.product.stock;
+    if (item.variant && item.variant.productId !== item.productId) {
+      throw new Error(`${item.product.name} varyanti gecersiz`);
+    }
+    if (item.quantity > availableStock) {
       throw new Error(`${item.product.name} icin stok yetersiz`);
     }
-    subtotal += getEffectiveUnitPrice(item.product) * item.quantity;
+    subtotal += getVariantUnitPrice(item.product, item.variant) * item.quantity;
   }
 
   let discountTotal = 0;
-  const normalizedCoupon = couponCode?.trim() || cart.couponCode || undefined;
+  const normalizedCoupon = couponCode?.trim() || fullCart.couponCode || undefined;
   if (normalizedCoupon) {
     const coupon = await prisma.coupon.findFirst({
       where: {

@@ -6,6 +6,15 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { productAdminSchema } from "@/lib/validators";
 
+type ProductVariantInput = {
+  name: string;
+  value: string;
+  sku: string;
+  barcode?: string;
+  stock: number;
+  priceDiff: number;
+};
+
 function buildProductData(formData: FormData) {
   const parsed = productAdminSchema.safeParse({
     ...Object.fromEntries(formData),
@@ -17,8 +26,65 @@ function buildProductData(formData: FormData) {
     throw new Error(parsed.error.issues[0]?.message ?? "Urun verisi hatali");
   }
 
-  const { imageUrl, ...productData } = parsed.data;
-  return { imageUrl, productData };
+  const imageUrls = formData
+    .getAll("imageUrls")
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+
+  const variantNames = formData.getAll("variantNames").map((value) => String(value).trim());
+  const variantValues = formData.getAll("variantValues").map((value) => String(value).trim());
+  const variantSkus = formData.getAll("variantSkus").map((value) => String(value).trim());
+  const variantBarcodes = formData.getAll("variantBarcodes").map((value) => String(value).trim());
+  const variantStocks = formData.getAll("variantStocks").map((value) => String(value).trim());
+  const variantPriceDiffs = formData.getAll("variantPriceDiffs").map((value) => String(value).trim());
+
+  const variants: ProductVariantInput[] = [];
+  const variantRowCount = Math.max(
+    variantNames.length,
+    variantValues.length,
+    variantSkus.length,
+    variantBarcodes.length,
+    variantStocks.length,
+    variantPriceDiffs.length
+  );
+
+  for (let index = 0; index < variantRowCount; index += 1) {
+    const name = variantNames[index] ?? "";
+    const value = variantValues[index] ?? "";
+    const sku = variantSkus[index] ?? "";
+    const barcode = variantBarcodes[index] ?? "";
+    const stockRaw = variantStocks[index] ?? "";
+    const priceDiffRaw = variantPriceDiffs[index] ?? "";
+
+    if (![name, value, sku, barcode, stockRaw, priceDiffRaw].some(Boolean)) {
+      continue;
+    }
+
+    if (!name || !value || !sku || stockRaw === "") {
+      throw new Error(`Varyant ${index + 1} icin ad, deger, SKU ve stok zorunlu`);
+    }
+
+    const stock = Number(stockRaw);
+    const priceDiff = priceDiffRaw === "" ? 0 : Number(priceDiffRaw);
+    if (!Number.isInteger(stock) || stock < 0) {
+      throw new Error(`Varyant ${index + 1} stogu gecersiz`);
+    }
+    if (Number.isNaN(priceDiff)) {
+      throw new Error(`Varyant ${index + 1} fiyat farki gecersiz`);
+    }
+
+    variants.push({
+      name,
+      value,
+      sku,
+      barcode: barcode || undefined,
+      stock,
+      priceDiff
+    });
+  }
+
+  const { imageUrl: _legacyImageUrl, ...productData } = parsed.data;
+  return { imageUrls, variants, productData };
 }
 
 export async function updateOrderStatusAction(formData: FormData) {
@@ -65,18 +131,23 @@ export async function updateOrderStatusAction(formData: FormData) {
 
 export async function createProductAction(formData: FormData) {
   await requireAdmin();
-  const { imageUrl, productData } = buildProductData(formData);
+  const { imageUrls, variants, productData } = buildProductData(formData);
 
   await prisma.product.create({
     data: {
       ...productData,
-      images: imageUrl
+      images: imageUrls.length > 0
         ? {
-            create: {
-              url: imageUrl,
+            create: imageUrls.map((url, index) => ({
+              url,
               alt: productData.name,
-              sortOrder: 0
-            }
+              sortOrder: index
+            }))
+          }
+        : undefined,
+      variants: variants.length > 0
+        ? {
+            create: variants
           }
         : undefined
     }
@@ -93,34 +164,37 @@ export async function updateProductAction(formData: FormData) {
 
   const existing = await prisma.product.findUnique({
     where: { id: productId },
-    include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } }
+    include: { images: { orderBy: { sortOrder: "asc" } }, variants: true }
   });
   if (!existing) throw new Error("Urun bulunamadi");
 
-  const { imageUrl, productData } = buildProductData(formData);
+  const { imageUrls, variants, productData } = buildProductData(formData);
 
   await prisma.product.update({
     where: { id: productId },
     data: productData
   });
 
-  const firstImage = existing.images[0];
-  if (imageUrl && firstImage) {
-    await prisma.productImage.update({
-      where: { id: firstImage.id },
-      data: { url: imageUrl, alt: productData.name }
-    });
-  } else if (imageUrl && !firstImage) {
-    await prisma.productImage.create({
-      data: {
+  await prisma.productImage.deleteMany({ where: { productId } });
+  if (imageUrls.length > 0) {
+    await prisma.productImage.createMany({
+      data: imageUrls.map((url, index) => ({
         productId,
-        url: imageUrl,
+        url,
         alt: productData.name,
-        sortOrder: 0
-      }
+        sortOrder: index
+      }))
     });
-  } else if (!imageUrl && firstImage) {
-    await prisma.productImage.delete({ where: { id: firstImage.id } });
+  }
+
+  await prisma.productVariant.deleteMany({ where: { productId } });
+  if (variants.length > 0) {
+    await prisma.productVariant.createMany({
+      data: variants.map((variant) => ({
+        productId,
+        ...variant
+      }))
+    });
   }
 
   revalidatePath("/admin/products");

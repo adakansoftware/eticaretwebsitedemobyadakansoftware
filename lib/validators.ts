@@ -33,6 +33,7 @@ export const resetPasswordSchema = z
 
 export const cartQuantitySchema = z.object({
   productId: z.string().min(1),
+  variantId: z.string().optional().transform((value) => value?.trim() || undefined),
   quantity: z.number().int().min(1).max(99)
 });
 

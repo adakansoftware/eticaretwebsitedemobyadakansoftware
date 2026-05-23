@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ActionResult } from "@/lib/action-response";
 import { AdminActionForm } from "@/components/admin/admin-action-form";
 import { ConfirmSubmitButton } from "@/components/admin/confirm-submit-button";
-import { ImageUploadField } from "@/components/admin/image-upload-field";
+import { ProductMediaVariantFields } from "@/components/admin/product-media-variant-fields";
 import { AdminSubmitButton } from "@/components/admin/admin-submit-button";
 import {
   AdminFilterBar,
@@ -93,7 +93,8 @@ export default async function AdminProductsPage({ searchParams }: AdminProductsP
         include: {
           category: true,
           brand: true,
-          images: { orderBy: { sortOrder: "asc" }, take: 1 }
+          images: { orderBy: { sortOrder: "asc" } },
+          variants: { orderBy: [{ name: "asc" }, { value: "asc" }] }
         },
         orderBy: { createdAt: "desc" },
         ...getPagination(page, DEFAULT_PAGE_SIZE)
@@ -235,6 +236,9 @@ export default async function AdminProductsPage({ searchParams }: AdminProductsP
                       <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-slate-200">
                         Stok {product.stock}
                       </span>
+                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-slate-200">
+                        {product.images.length} gorsel / {product.variants.length} varyant
+                      </span>
                     </div>
                   </div>
 
@@ -284,7 +288,15 @@ export default async function AdminProductsPage({ searchParams }: AdminProductsP
                     isFeatured: product.isFeatured,
                     categoryId: product.categoryId,
                     brandId: product.brandId ?? "",
-                    imageUrl: product.images[0]?.url ?? ""
+                    imageUrls: product.images.map((image) => image.url),
+                    variants: product.variants.map((variant) => ({
+                      name: variant.name,
+                      value: variant.value,
+                      sku: variant.sku,
+                      barcode: variant.barcode ?? "",
+                      stock: variant.stock,
+                      priceDiff: Number(variant.priceDiff)
+                    }))
                   }}
                 />
               </AdminListItem>
@@ -362,7 +374,15 @@ type ProductFormProps = {
     isFeatured: boolean;
     categoryId: string;
     brandId: string;
-    imageUrl: string;
+    imageUrls: string[];
+    variants: Array<{
+      name: string;
+      value: string;
+      sku: string;
+      barcode: string;
+      stock: number;
+      priceDiff: number;
+    }>;
   };
 };
 
@@ -389,13 +409,6 @@ function ProductForm({
           className={inputClass}
         />
         <Input name="barcode" placeholder="Barcode" defaultValue={defaultValues?.barcode} className={inputClass} />
-        <ImageUploadField
-          name="imageUrl"
-          folder="products"
-          placeholder="https://..."
-          defaultValue={defaultValues?.imageUrl}
-          className="md:col-span-2"
-        />
         <Input name="sku" placeholder="SKU" defaultValue={defaultValues?.sku} required className={inputClass} />
         <Input
           name="price"
@@ -479,6 +492,11 @@ function ProductForm({
         placeholder="Urun aciklamasi"
         required
         className={textareaClass}
+      />
+
+      <ProductMediaVariantFields
+        defaultImageUrls={defaultValues?.imageUrls}
+        defaultVariants={defaultValues?.variants}
       />
 
       <div className="flex flex-col gap-3 rounded-[1.4rem] border border-white/10 bg-slate-950/50 p-4 text-sm text-slate-200 md:flex-row md:items-center">

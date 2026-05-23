@@ -9,7 +9,7 @@ import {
   updateCartItemQuantityFormAction
 } from "@/lib/actions/cart-actions";
 import { calculateCartTotals, getCart } from "@/lib/cart";
-import { getEffectiveUnitPrice } from "@/lib/commerce";
+import { getVariantUnitPrice } from "@/lib/commerce";
 import { getSiteSettings } from "@/lib/site-settings";
 import { formatPrice } from "@/lib/utils";
 
@@ -72,7 +72,8 @@ export default async function CartPage() {
             <div className="mt-10 grid gap-8 lg:grid-cols-[1.35fr_.65fr]">
               <div className="space-y-4">
                 {cart.items.map((item) => {
-                  const effectivePrice = getEffectiveUnitPrice(item.product);
+                  const effectivePrice = getVariantUnitPrice(item.product, item.variant);
+                  const stockLimit = item.variant?.stock ?? item.product.stock;
 
                   return (
                     <article
@@ -87,15 +88,20 @@ export default async function CartPage() {
                           <h2 className="text-xl font-black tracking-tight text-slate-950">
                             {item.product.name}
                           </h2>
+                          {item.variant ? (
+                            <p className="text-sm font-semibold text-slate-700">
+                              {item.variant.name}: {item.variant.value}
+                            </p>
+                          ) : null}
                           <p className="text-sm leading-6 text-slate-600">
                             {item.product.shortDescription ?? item.product.description}
                           </p>
                           <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
                             <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">
-                              SKU: {item.product.sku}
+                              SKU: {item.variant?.sku ?? item.product.sku}
                             </span>
                             <span className="rounded-full bg-emerald-50 px-3 py-1 text-emerald-800">
-                              Stok: {item.product.stock}
+                              Stok: {stockLimit}
                             </span>
                           </div>
                         </div>
@@ -120,7 +126,7 @@ export default async function CartPage() {
                               type="number"
                               name="quantity"
                               min={1}
-                              max={Math.max(1, item.product.stock)}
+                              max={Math.max(1, stockLimit)}
                               defaultValue={item.quantity}
                               className="h-11 w-24 rounded-full border border-slate-200 px-4 text-sm outline-none transition focus:border-emerald-700"
                             />
