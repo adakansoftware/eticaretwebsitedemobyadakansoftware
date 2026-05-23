@@ -38,7 +38,7 @@ export async function registerAction(formData: FormData) {
   redirect("/");
 }
 
-export async function loginAction(formData: FormData) {
+async function authenticateUser(formData: FormData, scope: "customer" | "admin") {
   const parsed = loginSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     throw new Error("E-posta veya sifre hatali");
@@ -58,8 +58,27 @@ export async function loginAction(formData: FormData) {
     throw new Error("E-posta veya sifre hatali");
   }
 
+  if (scope === "customer" && user.role === "ADMIN") {
+    throw new Error("Admin hesaplari musteri girisinden degil admin giris ekranindan oturum acar.");
+  }
+
+  if (scope === "admin" && user.role !== "ADMIN") {
+    throw new Error("Bu alan sadece admin hesaplari icindir.");
+  }
+
+  return user;
+}
+
+export async function customerLoginAction(formData: FormData) {
+  const user = await authenticateUser(formData, "customer");
   await createSession({ userId: user.id, email: user.email, role: user.role });
-  redirect(user.role === "ADMIN" ? "/admin" : "/");
+  redirect("/");
+}
+
+export async function adminLoginAction(formData: FormData) {
+  const user = await authenticateUser(formData, "admin");
+  await createSession({ userId: user.id, email: user.email, role: user.role });
+  redirect("/admin");
 }
 
 export async function logoutAction() {

@@ -17,7 +17,7 @@ export async function Header() {
           </span>
           <span className="leading-tight">
             <span className="block text-[0.68rem] font-bold uppercase tracking-[0.28em] text-amber-700">
-              Güvenli alışveriş
+              Guvenli alisveris
             </span>
             <span className="block text-base font-black tracking-tight text-slate-950">
               {siteName}
@@ -30,13 +30,13 @@ export async function Header() {
             Ana sayfa
           </Link>
           <Link className="transition hover:text-emerald-800" href="/products">
-            Ürünler
+            Urunler
           </Link>
           <Link className="transition hover:text-emerald-800" href="/categories">
             Kategoriler
           </Link>
           <Link className="transition hover:text-emerald-800" href="/legal/iletisim">
-            İletişim
+            Iletisim
           </Link>
         </nav>
 
@@ -48,18 +48,25 @@ export async function Header() {
             >
               Admin
             </Link>
+          ) : !user ? (
+            <Link
+              href="/admin-login"
+              className="hidden rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-950 transition hover:border-emerald-300 hover:bg-emerald-100 lg:inline-flex"
+            >
+              Admin girisi
+            </Link>
           ) : null}
 
           <Link
             href={user ? "/orders" : "/login"}
             className="hidden rounded-full border border-slate-300 px-4 py-2 text-sm font-bold text-slate-900 transition hover:border-amber-500 hover:bg-white md:inline-flex"
           >
-            {user ? "Hesabım" : "Giriş yap"}
+            {user ? "Hesabim" : "Musteri girisi"}
           </Link>
 
           <Link
             href={user ? "/orders" : "/login"}
-            aria-label={user ? "Hesabım" : "Giriş yap"}
+            aria-label={user ? "Hesabim" : "Musteri girisi"}
             className="grid h-11 w-11 place-items-center rounded-full border border-slate-300 bg-white text-slate-900 transition hover:-translate-y-0.5 hover:border-amber-500 md:hidden"
           >
             <UserRound className="h-5 w-5" />
