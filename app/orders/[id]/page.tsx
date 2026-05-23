@@ -19,11 +19,26 @@ type OrderDetailPageProps = {
   searchParams?: Promise<{ access?: string }>;
 };
 
+function getPaymentStatusLabel(status?: string | null) {
+  switch (status) {
+    case "CONFIRMED":
+      return "Odeme onaylandi";
+    case "REJECTED":
+      return "Odeme reddedildi";
+    case "REFUNDED":
+      return "Odeme iade edildi";
+    case "WAITING":
+    default:
+      return "Odeme bekleniyor";
+  }
+}
+
 export default async function OrderDetailPage({ params, searchParams }: OrderDetailPageProps) {
   const user = await getCurrentUser();
   const { id } = await params;
   const access = (await searchParams)?.access?.trim();
   const guestAccessAllowed = !user && access ? await verifyGuestOrderAccessToken(access, id) : false;
+
   const [order, settings] = await Promise.all([
     prisma.order.findFirst({
       where: user
@@ -65,7 +80,7 @@ export default async function OrderDetailPage({ params, searchParams }: OrderDet
               </div>
               <div className="flex items-center justify-between gap-6">
                 <span className="text-slate-500">Odeme</span>
-                <span className="font-bold text-slate-950">{order.payment?.status ?? "WAITING"}</span>
+                <span className="font-bold text-slate-950">{getPaymentStatusLabel(order.payment?.status)}</span>
               </div>
               <div className="flex items-center justify-between gap-6">
                 <span className="text-slate-500">Yontem</span>
@@ -104,7 +119,7 @@ export default async function OrderDetailPage({ params, searchParams }: OrderDet
                         {item.productName}
                       </Link>
                       <p className="mt-1 text-sm text-slate-600">
-                        {item.productBrand ?? "Marka yok"} · SKU {item.sku}
+                        {item.productBrand ?? "Marka yok"} / SKU {item.sku}
                       </p>
                     </div>
                     <div className="text-left md:text-right">
@@ -136,6 +151,30 @@ export default async function OrderDetailPage({ params, searchParams }: OrderDet
                 </div>
               </div>
             ) : null}
+
+            <div className="rounded-[2rem] bg-white p-6 shadow-sm">
+              <h2 className="text-2xl font-black text-slate-950">Siparis zamani</h2>
+              <div className="mt-4 grid gap-3 rounded-[1.5rem] bg-slate-50 p-4 text-sm text-slate-700">
+                <div className="flex items-center justify-between gap-6">
+                  <span>Olusturuldu</span>
+                  <span className="font-bold text-slate-950">
+                    {new Intl.DateTimeFormat("tr-TR", {
+                      dateStyle: "medium",
+                      timeStyle: "short"
+                    }).format(order.createdAt)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-6">
+                  <span>Son guncelleme</span>
+                  <span className="font-bold text-slate-950">
+                    {new Intl.DateTimeFormat("tr-TR", {
+                      dateStyle: "medium",
+                      timeStyle: "short"
+                    }).format(order.updatedAt)}
+                  </span>
+                </div>
+              </div>
+            </div>
           </section>
 
           <section className="space-y-6">
@@ -173,6 +212,15 @@ export default async function OrderDetailPage({ params, searchParams }: OrderDet
                 </div>
               </div>
             </div>
+
+            {order.customerNote ? (
+              <div className="rounded-[2rem] bg-white p-6 shadow-sm">
+                <h2 className="text-2xl font-black text-slate-950">Siparis notun</h2>
+                <p className="mt-4 whitespace-pre-line text-sm leading-7 text-slate-700">
+                  {order.customerNote}
+                </p>
+              </div>
+            ) : null}
 
             {order.status === "WAITING_PAYMENT" &&
             order.paymentMethod === "BANK_TRANSFER" &&
