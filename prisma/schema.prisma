@@ -390,3 +390,18 @@ model AdminAuditLog {
   @@index([adminUserId, createdAt])
   @@index([entityType, entityId])
 }
+
+model ActionRateLimit {
+  id            String   @id @default(cuid())
+  scope         String
+  key           String
+  count         Int      @default(0)
+  blockedCount  Int      @default(0)
+  expiresAt     DateTime
+  lastBlockedAt DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([scope, key])
+  @@index([expiresAt])
+}

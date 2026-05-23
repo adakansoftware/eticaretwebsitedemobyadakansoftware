@@ -5,10 +5,18 @@ import { createAdminAuditLog } from "@/lib/admin-audit";
 import { actionError, actionSuccess, type ActionResult } from "@/lib/action-response";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import { inventoryAdjustmentSchema } from "@/lib/validators";
 
 async function adjustInventory(formData: FormData) {
-  await requireAdmin();
+  const admin = await requireAdmin();
+  await enforceRateLimit({
+    scope: "admin:inventory-adjust",
+    key: admin.id,
+    limit: 30,
+    windowMs: 10 * 60 * 1000,
+    message: "Cok fazla envanter islemi yapildi. Lutfen biraz sonra tekrar deneyin."
+  });
 
   const parsed = inventoryAdjustmentSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {

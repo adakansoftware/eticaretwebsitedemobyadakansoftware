@@ -5,6 +5,7 @@ import { createAdminAuditLog } from "@/lib/admin-audit";
 import { actionError, actionSuccess, type ActionResult } from "@/lib/action-response";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import { bannerAdminSchema } from "@/lib/validators";
 
 function buildBannerData(formData: FormData) {
@@ -26,7 +27,14 @@ function revalidateBannerPaths() {
 }
 
 export async function createBannerAction(formData: FormData) {
-  await requireAdmin();
+  const admin = await requireAdmin();
+  await enforceRateLimit({
+    scope: "admin:banner-create",
+    key: admin.id,
+    limit: 20,
+    windowMs: 10 * 60 * 1000,
+    message: "Cok fazla banner islemi yapildi. Lutfen biraz sonra tekrar deneyin."
+  });
   const data = buildBannerData(formData);
 
   const banner = await prisma.banner.create({ data });
@@ -41,7 +49,14 @@ export async function createBannerAction(formData: FormData) {
 }
 
 export async function updateBannerAction(formData: FormData) {
-  await requireAdmin();
+  const admin = await requireAdmin();
+  await enforceRateLimit({
+    scope: "admin:banner-update",
+    key: admin.id,
+    limit: 30,
+    windowMs: 10 * 60 * 1000,
+    message: "Cok fazla banner islemi yapildi. Lutfen biraz sonra tekrar deneyin."
+  });
   const bannerId = String(formData.get("bannerId") ?? "");
   if (!bannerId) throw new Error("Banner bulunamadi");
 
@@ -63,7 +78,14 @@ export async function updateBannerAction(formData: FormData) {
 }
 
 export async function deleteBannerAction(formData: FormData) {
-  await requireAdmin();
+  const admin = await requireAdmin();
+  await enforceRateLimit({
+    scope: "admin:banner-delete",
+    key: admin.id,
+    limit: 15,
+    windowMs: 10 * 60 * 1000,
+    message: "Cok fazla banner silme islemi yapildi. Lutfen biraz sonra tekrar deneyin."
+  });
   const bannerId = String(formData.get("bannerId") ?? "");
   if (!bannerId) throw new Error("Banner bulunamadi");
 

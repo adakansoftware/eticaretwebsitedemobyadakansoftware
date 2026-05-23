@@ -3,9 +3,24 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/utils";
 
+async function getSince24HoursDate() {
+  return new Date(Date.now() - 24 * 60 * 60 * 1000);
+}
+
 export default async function AdminDashboardPage() {
-  const [revenue, totalOrders, pendingOrders, productCount, lowStockProducts, customerCount, recentOrders] =
-    await Promise.all([
+  const since24h = await getSince24HoursDate();
+  const [
+    revenue,
+    totalOrders,
+    pendingOrders,
+    productCount,
+    lowStockProducts,
+    customerCount,
+    recentOrders,
+    auditEvents24h,
+    blockedAttempts24h,
+    recentAuditLogs
+  ] = await Promise.all([
       prisma.order.aggregate({
         _sum: { grandTotal: true },
         where: { status: { in: ["PAID", "PREPARING", "SHIPPED", "DELIVERED"] } }
@@ -29,6 +44,24 @@ export default async function AdminDashboardPage() {
         include: { user: true, payment: true },
         orderBy: { createdAt: "desc" },
         take: 5
+      }),
+      prisma.adminAuditLog.count({
+        where: { createdAt: { gte: since24h } }
+      }),
+      prisma.actionRateLimit.aggregate({
+        _sum: { blockedCount: true },
+        where: {
+          OR: [{ lastBlockedAt: { gte: since24h } }, { updatedAt: { gte: since24h } }]
+        }
+      }),
+      prisma.adminAuditLog.findMany({
+        include: {
+          adminUser: {
+            select: { name: true }
+          }
+        },
+        orderBy: { createdAt: "desc" },
+        take: 5
       })
     ]);
 
@@ -38,7 +71,9 @@ export default async function AdminDashboardPage() {
     { title: "Bekleyen siparis", value: pendingOrders },
     { title: "Urun sayisi", value: productCount },
     { title: "Dusuk stok", value: lowStockProducts.length },
-    { title: "Musteri sayisi", value: customerCount }
+    { title: "Musteri sayisi", value: customerCount },
+    { title: "24s audit olayi", value: auditEvents24h },
+    { title: "24s engellenen deneme", value: blockedAttempts24h._sum.blockedCount ?? 0 }
   ];
 
   return (
@@ -161,6 +196,51 @@ export default async function AdminDashboardPage() {
               </div>
             )}
           </div>
+        </div>
+      </section>
+
+      <section className="rounded-[2rem] border border-white/10 bg-white/5 p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-black text-white">Son audit hareketleri</h2>
+            <p className="mt-2 text-sm text-slate-300">
+              Ayar, siparis, kupon ve operasyon mutasyonlarini buradan hizli izle.
+            </p>
+          </div>
+          <Link href="/admin/audit" className="text-sm font-bold text-emerald-200">
+            Audit ekrani
+          </Link>
+        </div>
+
+        <div className="mt-6 space-y-3">
+          {recentAuditLogs.length > 0 ? (
+            recentAuditLogs.map((log) => (
+              <article
+                key={log.id}
+                className="rounded-[1.6rem] border border-white/10 bg-slate-950/60 p-4"
+              >
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-200/80">
+                      {log.action} · {log.entityType}
+                    </p>
+                    <p className="mt-2 font-black text-white">{log.summary}</p>
+                    <p className="mt-1 text-sm text-slate-300">{log.adminUser.name}</p>
+                  </div>
+                  <p className="text-sm text-slate-400">
+                    {new Intl.DateTimeFormat("tr-TR", {
+                      dateStyle: "medium",
+                      timeStyle: "short"
+                    }).format(log.createdAt)}
+                  </p>
+                </div>
+              </article>
+            ))
+          ) : (
+            <div className="rounded-[1.6rem] border border-dashed border-white/15 p-4 text-sm text-slate-300">
+              Son 24 saatte audit hareketi yok.
+            </div>
+          )}
         </div>
       </section>
     </div>

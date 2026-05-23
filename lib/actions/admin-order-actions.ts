@@ -5,6 +5,7 @@ import { createAdminAuditLog } from "@/lib/admin-audit";
 import { actionError, actionSuccess, type ActionResult } from "@/lib/action-response";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import { orderAdminSchema } from "@/lib/validators";
 
 const blockedRollbackStatuses = new Set(["CANCELLED", "REFUNDED"]);
@@ -26,7 +27,14 @@ function revalidateOrderPaths(orderId: string) {
 }
 
 export async function updateAdminOrderAction(formData: FormData) {
-  await requireAdmin();
+  const admin = await requireAdmin();
+  await enforceRateLimit({
+    scope: "admin:order-update",
+    key: admin.id,
+    limit: 50,
+    windowMs: 10 * 60 * 1000,
+    message: "Cok fazla siparis guncellemesi yapildi. Lutfen biraz sonra tekrar deneyin."
+  });
 
   const parsed = orderAdminSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
@@ -115,7 +123,14 @@ export async function updateAdminOrderAction(formData: FormData) {
 }
 
 export async function confirmManualPaymentAction(formData: FormData) {
-  await requireAdmin();
+  const admin = await requireAdmin();
+  await enforceRateLimit({
+    scope: "admin:payment-confirm",
+    key: admin.id,
+    limit: 25,
+    windowMs: 10 * 60 * 1000,
+    message: "Cok fazla manuel odeme onayi yapildi. Lutfen biraz sonra tekrar deneyin."
+  });
   const orderId = String(formData.get("orderId") ?? "");
   if (!orderId) throw new Error("Siparis bulunamadi");
 

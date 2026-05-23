@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { createSession, hashPassword, verifyPassword, clearSession } from "@/lib/auth";
+import { enforceRateLimit, getRequestFingerprint } from "@/lib/rate-limit";
 import { loginSchema, registerSchema } from "@/lib/validators";
 
 export async function registerAction(formData: FormData) {
@@ -10,6 +11,15 @@ export async function registerAction(formData: FormData) {
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? "Gecersiz bilgi");
   }
+
+  const fingerprint = await getRequestFingerprint();
+  await enforceRateLimit({
+    scope: "auth:register",
+    key: `${parsed.data.email.toLowerCase()}|${fingerprint}`,
+    limit: 5,
+    windowMs: 15 * 60 * 1000,
+    message: "Cok fazla kayit denemesi yapildi. Lutfen daha sonra tekrar deneyin."
+  });
 
   const existing = await prisma.user.findUnique({ where: { email: parsed.data.email } });
   if (existing) {
@@ -33,6 +43,15 @@ export async function loginAction(formData: FormData) {
   if (!parsed.success) {
     throw new Error("E-posta veya sifre hatali");
   }
+
+  const fingerprint = await getRequestFingerprint();
+  await enforceRateLimit({
+    scope: "auth:login",
+    key: `${parsed.data.email.toLowerCase()}|${fingerprint}`,
+    limit: 8,
+    windowMs: 15 * 60 * 1000,
+    message: "Cok fazla giris denemesi yapildi. Lutfen 15 dakika sonra tekrar deneyin."
+  });
 
   const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
   if (!user || !(await verifyPassword(parsed.data.password, user.passwordHash))) {
