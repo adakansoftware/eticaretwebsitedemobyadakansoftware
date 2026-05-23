@@ -1,5 +1,12 @@
 import Link from "next/link";
 import { Prisma } from "@prisma/client";
+import {
+  AdminFilterBar,
+  AdminKpiStrip,
+  AdminListItem,
+  AdminPageHeader,
+  AdminPanel
+} from "@/components/admin/admin-ui";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DEFAULT_PAGE_SIZE, getPageValue, getPagination, getPaginationMeta } from "@/lib/pagination";
@@ -26,6 +33,11 @@ function buildCustomerLink(q?: string, role?: string, dateFrom?: string, dateTo?
   return query ? `/admin/customers?${query}` : "/admin/customers";
 }
 
+const inputClass =
+  "border-white/10 bg-slate-950/80 text-white placeholder:text-slate-500 ring-white/10";
+const selectClass =
+  "h-11 rounded-2xl border border-white/10 bg-slate-950/80 px-4 text-sm text-white outline-none transition focus:ring-4 focus:ring-white/10";
+
 export default async function AdminCustomersPage({ searchParams }: AdminCustomersPageProps) {
   const resolvedSearchParams = await searchParams;
   const q = resolvedSearchParams?.q?.trim();
@@ -38,7 +50,7 @@ export default async function AdminCustomersPage({ searchParams }: AdminCustomer
 
   const where: Prisma.UserWhereInput = {
     ...(roleFilter ? { role: roleFilter } : {}),
-    ...((dateFrom || dateTo)
+    ...(dateFrom || dateTo
       ? {
           createdAt: {
             ...(dateFrom ? { gte: new Date(`${dateFrom}T00:00:00.000Z`) } : {}),
@@ -57,7 +69,7 @@ export default async function AdminCustomersPage({ searchParams }: AdminCustomer
       : {})
   };
 
-  const [totalItems, users] = await Promise.all([
+  const [totalItems, users, totalCustomers, adminCount] = await Promise.all([
     prisma.user.count({ where }),
     prisma.user.findMany({
       where,
@@ -66,138 +78,173 @@ export default async function AdminCustomersPage({ searchParams }: AdminCustomer
       },
       orderBy: { createdAt: "desc" },
       ...getPagination(page, DEFAULT_PAGE_SIZE)
-    })
+    }),
+    prisma.user.count({ where: { role: "USER" } }),
+    prisma.user.count({ where: { role: "ADMIN" } })
   ]);
 
   const pagination = getPaginationMeta(totalItems, page, DEFAULT_PAGE_SIZE);
+  const exportHref = `/admin/customers/export?${new URLSearchParams(
+    Object.entries({ q, role: roleFilter, dateFrom, dateTo }).filter(([, value]) => value) as Array<
+      [string, string]
+    >
+  ).toString()}`;
+
+  const kpis = [
+    {
+      label: "Toplam Musteri",
+      value: totalCustomers,
+      hint: "Sistemdeki kullanici tabani"
+    },
+    {
+      label: "Admin Hesap",
+      value: adminCount,
+      hint: "Panel erisimi olan hesaplar"
+    },
+    {
+      label: "Filtre Sonucu",
+      value: totalItems,
+      hint: "Su anki sorgu sonucu"
+    },
+    {
+      label: "Bu Sayfa",
+      value: users.length,
+      hint: `Sayfa ${pagination.page} / ${pagination.totalPages}`
+    }
+  ];
 
   return (
     <div className="space-y-8">
-      <section>
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <h1 className="text-4xl font-black tracking-tight text-white">Müşteriler</h1>
-            <p className="mt-3 max-w-2xl text-base leading-7 text-slate-300">
-              Hesap durumu, sipariş geçmişi, adres yoğunluğu ve wishlist verisini tek panelden izle.
-            </p>
-          </div>
-
+      <AdminPageHeader
+        eyebrow="Customer intelligence"
+        title="Musteri ekranini destek masasi degil operasyon hafizasi haline getir"
+        description="Kayit tarihi, siparis yogunlugu, adres sayisi ve wishlist davranisini daha taranabilir bir panelde topluyoruz."
+        actions={
           <Button asChild variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10">
-            <Link
-              href={`/admin/customers/export?${new URLSearchParams(
-                Object.entries({ q, role: roleFilter, dateFrom, dateTo }).filter(([, value]) => value) as Array<[string, string]>
-              ).toString()}`}
-            >
-              CSV dışa aktar
-            </Link>
+            <Link href={exportHref}>CSV disa aktar</Link>
           </Button>
-        </div>
-      </section>
+        }
+      />
 
-      <section className="rounded-[2rem] border border-white/10 bg-white/5 p-6">
-        <form className="grid gap-4 lg:grid-cols-[1fr_220px_180px_180px_auto]">
-          <Input
-            name="q"
-            defaultValue={q}
-            placeholder="Ad, e-posta veya telefon ara"
-            className="border-white/10 bg-slate-950 text-white ring-white/10"
-          />
-          <select
-            name="role"
-            defaultValue={role ?? ""}
-            className="h-11 rounded-2xl border border-white/10 bg-slate-950 px-4 text-sm text-white"
-          >
-            <option value="">Tüm roller</option>
-            <option value="USER">Müşteri</option>
-            <option value="ADMIN">Admin</option>
-          </select>
-          <Input
-            name="dateFrom"
-            type="date"
-            defaultValue={dateFrom}
-            className="border-white/10 bg-slate-950 text-white ring-white/10"
-          />
-          <Input
-            name="dateTo"
-            type="date"
-            defaultValue={dateTo}
-            className="border-white/10 bg-slate-950 text-white ring-white/10"
-          />
-          <Button className="w-full lg:w-auto">Filtrele</Button>
-        </form>
-      </section>
+      <AdminKpiStrip items={kpis} />
 
-      <section className="grid gap-4">
-        {users.length > 0 ? (
-          users.map((user) => (
-            <article key={user.id} className="rounded-[2rem] border border-white/10 bg-white/5 p-5">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div>
-                  <p className="text-xl font-black text-white">{user.name}</p>
-                  <p className="mt-1 text-sm text-slate-300">{user.email}</p>
-                  <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold">
-                    <span className="rounded-full bg-white/10 px-3 py-1 text-slate-200">
-                      Rol: {user.role}
-                    </span>
-                    <span className="rounded-full bg-white/10 px-3 py-1 text-slate-200">
-                      Adres: {user._count.addresses}
-                    </span>
-                    <span className="rounded-full bg-white/10 px-3 py-1 text-slate-200">
-                      Wishlist: {user._count.wishlistItems}
-                    </span>
-                  </div>
-                </div>
+      <AdminPanel
+        title="Filtreler"
+        description="Ad, e-posta, telefon ve tarih araligi ile musteri havuzunu hizla daralt."
+      >
+        <AdminFilterBar>
+          <form className="grid gap-4 lg:grid-cols-[1.1fr_220px_180px_180px_auto]">
+            <Input
+              name="q"
+              defaultValue={q}
+              placeholder="Ad, e-posta veya telefon ara"
+              className={inputClass}
+            />
+            <select name="role" defaultValue={role ?? ""} className={selectClass}>
+              <option value="">Tum roller</option>
+              <option value="USER">Musteri</option>
+              <option value="ADMIN">Admin</option>
+            </select>
+            <Input name="dateFrom" type="date" defaultValue={dateFrom} className={inputClass} />
+            <Input name="dateTo" type="date" defaultValue={dateTo} className={inputClass} />
+            <Button className="w-full bg-white text-slate-950 hover:bg-slate-200 lg:w-auto">
+              Filtrele
+            </Button>
+          </form>
+        </AdminFilterBar>
+      </AdminPanel>
 
-                <div className="flex min-w-[240px] flex-col gap-3">
-                  <div className="grid gap-3 rounded-[1.5rem] border border-white/10 bg-slate-950/50 p-4 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-400">Sipariş sayısı</span>
-                      <span className="font-bold text-white">{user._count.orders}</span>
+      <AdminPanel
+        title="Musteri listesi"
+        description="Yogun kullanimda bile tek bakista karar verebilmek icin kartlari daha net veri bloklariyla duzenledik."
+      >
+        <div className="space-y-4">
+          {users.length > 0 ? (
+            users.map((user) => (
+              <AdminListItem key={user.id} className="p-5 md:p-6">
+                <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-xl font-black text-white">{user.name}</p>
+                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-slate-300">
+                        {user.role}
+                      </span>
                     </div>
+                    <p className="text-sm text-slate-300">{user.email}</p>
+                    <p className="text-sm text-slate-400">{user.phone ?? "Telefon bilgisi yok"}</p>
+                    <div className="flex flex-wrap gap-2 text-xs font-semibold">
+                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-slate-200">
+                        Siparis {user._count.orders}
+                      </span>
+                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-slate-200">
+                        Adres {user._count.addresses}
+                      </span>
+                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-slate-200">
+                        Wishlist {user._count.wishlistItems}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid min-w-[280px] gap-3 rounded-[1.6rem] border border-white/10 bg-slate-950/50 p-4 text-sm">
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-400">Kayıt tarihi</span>
+                      <span className="text-slate-400">Kayit tarihi</span>
                       <span className="font-bold text-white">
                         {new Intl.DateTimeFormat("tr-TR", { dateStyle: "medium" }).format(user.createdAt)}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-400">Telefon</span>
-                      <span className="font-bold text-white">{user.phone ?? "Yok"}</span>
+                      <span className="text-slate-400">Sonraki adim</span>
+                      <span className="font-bold text-white">
+                        {user._count.orders > 0 ? "Siparis gecmisi var" : "Ilk siparis bekliyor"}
+                      </span>
                     </div>
+                    <Button
+                      asChild
+                      variant="outline"
+                      className="mt-2 border-white/10 bg-white/5 text-white hover:bg-white/10"
+                    >
+                      <Link href={`/admin/customers/${user.id}`}>Detayi ac</Link>
+                    </Button>
                   </div>
-
-                  <Button asChild variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10">
-                    <Link href={`/admin/customers/${user.id}`}>Detayı aç</Link>
-                  </Button>
                 </div>
-              </div>
-            </article>
-          ))
-        ) : (
-          <div className="rounded-[2rem] border border-dashed border-white/15 bg-white/5 p-8 text-slate-300">
-            Filtreye uyan müşteri bulunamadı.
-          </div>
-        )}
-      </section>
+              </AdminListItem>
+            ))
+          ) : (
+            <div className="rounded-[1.8rem] border border-dashed border-white/15 px-5 py-8 text-sm text-slate-300">
+              Filtreye uyan musteri bulunamadi.
+            </div>
+          )}
+        </div>
+      </AdminPanel>
 
       {pagination.totalPages > 1 ? (
-        <section className="flex items-center justify-between rounded-[2rem] border border-white/10 bg-white/5 p-4">
-          <Link
-            href={buildCustomerLink(q, role, dateFrom, dateTo, pagination.hasPreviousPage ? page - 1 : page)}
-            className={`rounded-full px-4 py-2 text-sm font-bold ${pagination.hasPreviousPage ? "bg-white text-slate-950" : "pointer-events-none bg-white/10 text-slate-500"}`}
-          >
-            Önceki
-          </Link>
-          <p className="text-sm text-slate-300">
-            Sayfa {pagination.page} / {pagination.totalPages}
-          </p>
-          <Link
-            href={buildCustomerLink(q, role, dateFrom, dateTo, pagination.hasNextPage ? page + 1 : page)}
-            className={`rounded-full px-4 py-2 text-sm font-bold ${pagination.hasNextPage ? "bg-white text-slate-950" : "pointer-events-none bg-white/10 text-slate-500"}`}
-          >
-            Sonraki
-          </Link>
-        </section>
+        <AdminPanel>
+          <div className="flex items-center justify-between gap-4">
+            <Link
+              href={buildCustomerLink(q, role, dateFrom, dateTo, pagination.hasPreviousPage ? page - 1 : page)}
+              className={`rounded-full px-4 py-2 text-sm font-bold ${
+                pagination.hasPreviousPage
+                  ? "bg-white text-slate-950"
+                  : "pointer-events-none bg-white/10 text-slate-500"
+              }`}
+            >
+              Onceki
+            </Link>
+            <p className="text-sm text-slate-300">
+              Sayfa {pagination.page} / {pagination.totalPages}
+            </p>
+            <Link
+              href={buildCustomerLink(q, role, dateFrom, dateTo, pagination.hasNextPage ? page + 1 : page)}
+              className={`rounded-full px-4 py-2 text-sm font-bold ${
+                pagination.hasNextPage
+                  ? "bg-white text-slate-950"
+                  : "pointer-events-none bg-white/10 text-slate-500"
+              }`}
+            >
+              Sonraki
+            </Link>
+          </div>
+        </AdminPanel>
       ) : null}
     </div>
   );

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { actionError, actionSuccess, type ActionResult } from "@/lib/action-response";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { productAdminSchema } from "@/lib/validators";
@@ -136,4 +137,40 @@ export async function deleteProductAction(formData: FormData) {
 
   revalidatePath("/admin/products");
   revalidatePath("/products");
+}
+
+export async function createProductFormAction(
+  _state: ActionResult | null,
+  formData: FormData
+): Promise<ActionResult> {
+  try {
+    await createProductAction(formData);
+    return actionSuccess(undefined, "Urun olusturuldu.");
+  } catch (error) {
+    return actionError(error instanceof Error ? error.message : "Urun olusturulamadi.");
+  }
+}
+
+export async function updateProductFormAction(
+  _state: ActionResult | null,
+  formData: FormData
+): Promise<ActionResult> {
+  try {
+    await updateProductAction(formData);
+    return actionSuccess(undefined, "Urun guncellendi.");
+  } catch (error) {
+    return actionError(error instanceof Error ? error.message : "Urun guncellenemedi.");
+  }
+}
+
+export async function deleteProductFormAction(
+  _state: ActionResult | null,
+  formData: FormData
+): Promise<ActionResult> {
+  try {
+    await deleteProductAction(formData);
+    return actionSuccess(undefined, "Urun silindi.");
+  } catch (error) {
+    return actionError(error instanceof Error ? error.message : "Urun silinemedi.");
+  }
 }

@@ -1,10 +1,21 @@
 import Link from "next/link";
+import type { ActionResult } from "@/lib/action-response";
+import { AdminActionForm } from "@/components/admin/admin-action-form";
+import { ConfirmSubmitButton } from "@/components/admin/confirm-submit-button";
+import { AdminSubmitButton } from "@/components/admin/admin-submit-button";
+import {
+  AdminFilterBar,
+  AdminKpiStrip,
+  AdminListItem,
+  AdminPageHeader,
+  AdminPanel
+} from "@/components/admin/admin-ui";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  createProductAction,
-  deleteProductAction,
-  updateProductAction
+  createProductFormAction,
+  deleteProductFormAction,
+  updateProductFormAction
 } from "@/lib/actions/admin-actions";
 import { DEFAULT_PAGE_SIZE, getPageValue, getPagination, getPaginationMeta } from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
@@ -39,6 +50,13 @@ function buildProductLink(
   return query ? `/admin/products?${query}` : "/admin/products";
 }
 
+const inputClass =
+  "border-white/10 bg-slate-950/80 text-white placeholder:text-slate-500 ring-white/10";
+const selectClass =
+  "h-11 rounded-2xl border border-white/10 bg-slate-950/80 px-4 text-sm text-white outline-none transition focus:ring-4 focus:ring-white/10";
+const textareaClass =
+  "min-h-32 w-full rounded-[1.4rem] border border-white/10 bg-slate-950/80 p-4 text-sm text-white outline-none transition focus:ring-4 focus:ring-white/10";
+
 export default async function AdminProductsPage({ searchParams }: AdminProductsPageProps) {
   const resolvedSearchParams = await searchParams;
   const q = resolvedSearchParams?.q?.trim();
@@ -64,207 +82,267 @@ export default async function AdminProductsPage({ searchParams }: AdminProductsP
     ...(stock === "in-stock" ? { stock: { gt: 0 } } : stock === "low-stock" ? { stock: { lte: 5 } } : {})
   };
 
-  const [categories, brands, totalItems, products] = await Promise.all([
-    prisma.category.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
-    prisma.brand.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
-    prisma.product.count({ where }),
-    prisma.product.findMany({
-      where,
-      include: {
-        category: true,
-        brand: true,
-        images: { orderBy: { sortOrder: "asc" }, take: 1 }
-      },
-      orderBy: { createdAt: "desc" },
-      ...getPagination(page, DEFAULT_PAGE_SIZE)
-    })
-  ]);
+  const [categories, brands, totalItems, products, activeProductCount, featuredCount, lowStockCount] =
+    await Promise.all([
+      prisma.category.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
+      prisma.brand.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
+      prisma.product.count({ where }),
+      prisma.product.findMany({
+        where,
+        include: {
+          category: true,
+          brand: true,
+          images: { orderBy: { sortOrder: "asc" }, take: 1 }
+        },
+        orderBy: { createdAt: "desc" },
+        ...getPagination(page, DEFAULT_PAGE_SIZE)
+      }),
+      prisma.product.count({ where: { isActive: true } }),
+      prisma.product.count({ where: { isFeatured: true } }),
+      prisma.product.count({ where: { isActive: true, stock: { lte: 5 } } })
+    ]);
 
   const pagination = getPaginationMeta(totalItems, page, DEFAULT_PAGE_SIZE);
   const currentFilters = { q, category, brand, status, stock };
+  const kpis = [
+    {
+      label: "Aktif Urun",
+      value: activeProductCount,
+      hint: "Vitrinde gorunen katalog",
+      tone: "good" as const
+    },
+    {
+      label: "One Cikan",
+      value: featuredCount,
+      hint: "Vitrin vurgusu alan urunler"
+    },
+    {
+      label: "Dusuk Stok",
+      value: lowStockCount,
+      hint: "Mudahale bekleyen SKU sayisi",
+      tone: lowStockCount > 0 ? ("warn" as const) : ("default" as const)
+    },
+    {
+      label: "Filtre Sonucu",
+      value: totalItems,
+      hint: `Sayfa ${pagination.page} / ${pagination.totalPages}`
+    }
+  ];
 
   return (
     <div className="space-y-8">
-      <section>
-        <h1 className="text-4xl font-black tracking-tight text-white">Ürünler</h1>
-        <p className="mt-3 max-w-3xl text-base leading-7 text-slate-300">
-          Ürün kataloğunu arama, filtreleme, fiyat, SEO ve stok alanlarıyla tek panelden yönet.
-        </p>
-      </section>
+      <AdminPageHeader
+        eyebrow="Catalog control"
+        title="Katalogu sadece yonetilen degil rahatca taranan bir yapıya cevir"
+        description="Urun olusturma, filtreleme ve stok takibini ayni dilde toparlayip katalog operasyonunu daha profesyonel hale getiriyoruz."
+      />
 
-      <section className="rounded-[2rem] border border-white/10 bg-white/5 p-6">
-        <h2 className="text-xl font-black text-white">Yeni ürün ekle</h2>
-        <ProductForm
-          action={createProductAction}
-          submitLabel="Ürünü oluştur"
-          categories={categories}
-          brands={brands}
-        />
-      </section>
+      <AdminKpiStrip items={kpis} />
 
-      <section className="rounded-[2rem] border border-white/10 bg-white/5 p-6">
-        <form className="grid gap-4 xl:grid-cols-[1fr_220px_220px_180px_180px_auto]">
-          <Input
-            name="q"
-            defaultValue={q}
-            placeholder="Ürün adı, SKU veya slug ara"
-            className="border-white/10 bg-slate-950 text-white ring-white/10"
+      <div className="grid gap-6 2xl:grid-cols-[.92fr_1.08fr]">
+        <AdminPanel
+          title="Yeni urun ekle"
+          description="Yeni SKU acarken kritik alanlari tek formda, net bir akista tamamla."
+        >
+          <ProductForm
+            action={createProductFormAction}
+            submitLabel="Urunu olustur"
+            categories={categories}
+            brands={brands}
+            resetOnSuccess
           />
-          <select
-            name="category"
-            defaultValue={category ?? ""}
-            className="h-11 rounded-2xl border border-white/10 bg-slate-950 px-4 text-sm text-white"
-          >
-            <option value="">Tüm kategoriler</option>
-            {categories.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name}
-              </option>
-            ))}
-          </select>
-          <select
-            name="brand"
-            defaultValue={brand ?? ""}
-            className="h-11 rounded-2xl border border-white/10 bg-slate-950 px-4 text-sm text-white"
-          >
-            <option value="">Tüm markalar</option>
-            {brands.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name}
-              </option>
-            ))}
-          </select>
-          <select
-            name="status"
-            defaultValue={status ?? ""}
-            className="h-11 rounded-2xl border border-white/10 bg-slate-950 px-4 text-sm text-white"
-          >
-            <option value="">Tüm durumlar</option>
-            <option value="active">Aktif</option>
-            <option value="passive">Pasif</option>
-          </select>
-          <select
-            name="stock"
-            defaultValue={stock ?? ""}
-            className="h-11 rounded-2xl border border-white/10 bg-slate-950 px-4 text-sm text-white"
-          >
-            <option value="">Tüm stoklar</option>
-            <option value="in-stock">Stokta olanlar</option>
-            <option value="low-stock">Düşük stok</option>
-          </select>
-          <Button className="w-full xl:w-auto">Filtrele</Button>
-        </form>
-      </section>
+        </AdminPanel>
 
-      <section className="grid gap-4">
-        {products.length > 0 ? (
-          products.map((product) => (
-            <article key={product.id} className="rounded-[2rem] border border-white/10 bg-white/5 p-6">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-2xl font-black text-white">{product.name}</h2>
-                    <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-slate-200">
-                      {product.isActive ? "Aktif" : "Pasif"}
-                    </span>
-                    {product.isFeatured ? (
-                      <span className="rounded-full bg-amber-500/15 px-3 py-1 text-xs font-semibold text-amber-200">
-                        Öne çıkan
-                      </span>
-                    ) : null}
-                  </div>
-                  <p className="mt-2 text-sm text-slate-300">
-                    {product.sku} · {formatPrice(product.salePrice?.toString() ?? product.price.toString())} ·{" "}
-                    {product.stock} stok
-                  </p>
-                  <p className="mt-1 text-sm text-slate-400">
-                    {product.category.name}
-                    {product.brand ? ` · ${product.brand.name}` : ""}
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap gap-3">
-                  <Button asChild variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10">
-                    <Link href={`/products/${product.slug}`}>Storefront</Link>
-                  </Button>
-                  <form action={deleteProductAction}>
-                    <input type="hidden" name="productId" value={product.id} />
-                    <Button variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10">
-                      Ürünü sil
-                    </Button>
-                  </form>
-                </div>
-              </div>
-
-              <ProductForm
-                action={updateProductAction}
-                submitLabel="Değişiklikleri kaydet"
-                productId={product.id}
-                categories={categories}
-                brands={brands}
-                defaultValues={{
-                  name: product.name,
-                  slug: product.slug,
-                  description: product.description,
-                  shortDescription: product.shortDescription ?? "",
-                  seoTitle: product.seoTitle ?? "",
-                  seoDescription: product.seoDescription ?? "",
-                  barcode: product.barcode ?? "",
-                  price: Number(product.price),
-                  salePrice: product.salePrice ? Number(product.salePrice) : "",
-                  compareAtPrice: product.compareAtPrice ? Number(product.compareAtPrice) : "",
-                  sku: product.sku,
-                  stock: product.stock,
-                  lowStockThreshold: product.lowStockThreshold,
-                  isActive: product.isActive,
-                  isFeatured: product.isFeatured,
-                  categoryId: product.categoryId,
-                  brandId: product.brandId ?? "",
-                  imageUrl: product.images[0]?.url ?? ""
-                }}
+        <AdminPanel
+          title="Filtreler"
+          description="Ad, SKU, kategori, marka ve stok sinyallerine gore katalogu aninda daralt."
+        >
+          <AdminFilterBar>
+            <form className="grid gap-4 xl:grid-cols-[1.1fr_220px_220px_180px_180px_auto]">
+              <Input
+                name="q"
+                defaultValue={q}
+                placeholder="Urun adi, SKU veya slug ara"
+                className={inputClass}
               />
-            </article>
-          ))
-        ) : (
-          <div className="rounded-[2rem] border border-dashed border-white/15 bg-white/5 p-8 text-slate-300">
-            Filtreye uyan ürün bulunamadı.
-          </div>
-        )}
-      </section>
+              <select name="category" defaultValue={category ?? ""} className={selectClass}>
+                <option value="">Tum kategoriler</option>
+                {categories.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+              <select name="brand" defaultValue={brand ?? ""} className={selectClass}>
+                <option value="">Tum markalar</option>
+                {brands.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+              <select name="status" defaultValue={status ?? ""} className={selectClass}>
+                <option value="">Tum durumlar</option>
+                <option value="active">Aktif</option>
+                <option value="passive">Pasif</option>
+              </select>
+              <select name="stock" defaultValue={stock ?? ""} className={selectClass}>
+                <option value="">Tum stoklar</option>
+                <option value="in-stock">Stokta olanlar</option>
+                <option value="low-stock">Dusuk stok</option>
+              </select>
+              <Button className="w-full bg-white text-slate-950 hover:bg-slate-200 xl:w-auto">
+                Filtrele
+              </Button>
+            </form>
+          </AdminFilterBar>
+        </AdminPanel>
+      </div>
+
+      <AdminPanel
+        title="Urun listesi"
+        description="Kartlari daha yonetsel bir duzende toparlayip fiyat, stok ve SEO alanlarini net bolgelere ayirdik."
+      >
+        <div className="space-y-4">
+          {products.length > 0 ? (
+            products.map((product) => (
+              <AdminListItem key={product.id} className="p-5 md:p-6">
+                <div className="flex flex-col gap-5 2xl:flex-row 2xl:items-start 2xl:justify-between">
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-2xl font-black text-white">{product.name}</h2>
+                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-slate-300">
+                        {product.isActive ? "Aktif" : "Pasif"}
+                      </span>
+                      {product.isFeatured ? (
+                        <span className="rounded-full border border-amber-400/20 bg-amber-500/10 px-3 py-1 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-amber-100">
+                          One cikan
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="text-sm text-slate-300">
+                      {product.sku} · {product.category.name}
+                      {product.brand ? ` · ${product.brand.name}` : ""}
+                    </p>
+                    <div className="flex flex-wrap gap-2 text-xs font-semibold">
+                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-slate-200">
+                        Fiyat {formatPrice(product.price.toString())}
+                      </span>
+                      <span className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-emerald-100">
+                        Satis {formatPrice(product.salePrice?.toString() ?? product.price.toString())}
+                      </span>
+                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-slate-200">
+                        Stok {product.stock}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-3">
+                    <Button
+                      asChild
+                      variant="outline"
+                      className="border-white/10 bg-white/5 text-white hover:bg-white/10"
+                    >
+                      <Link href={`/products/${product.slug}`}>Storefront</Link>
+                    </Button>
+                    <AdminActionForm action={deleteProductFormAction}>
+                      <input type="hidden" name="productId" value={product.id} />
+                      <ConfirmSubmitButton
+                        type="submit"
+                        variant="outline"
+                        className="border-rose-400/30 bg-rose-500/10 text-rose-100 hover:bg-rose-500/20"
+                        confirmMessage="Bu urunu silmek istediginize emin misiniz?"
+                      >
+                        Urunu sil
+                      </ConfirmSubmitButton>
+                    </AdminActionForm>
+                  </div>
+                </div>
+
+                <ProductForm
+                  action={updateProductFormAction}
+                  submitLabel="Degisiklikleri kaydet"
+                  productId={product.id}
+                  categories={categories}
+                  brands={brands}
+                  defaultValues={{
+                    name: product.name,
+                    slug: product.slug,
+                    description: product.description,
+                    shortDescription: product.shortDescription ?? "",
+                    seoTitle: product.seoTitle ?? "",
+                    seoDescription: product.seoDescription ?? "",
+                    barcode: product.barcode ?? "",
+                    price: Number(product.price),
+                    salePrice: product.salePrice ? Number(product.salePrice) : "",
+                    compareAtPrice: product.compareAtPrice ? Number(product.compareAtPrice) : "",
+                    sku: product.sku,
+                    stock: product.stock,
+                    lowStockThreshold: product.lowStockThreshold,
+                    isActive: product.isActive,
+                    isFeatured: product.isFeatured,
+                    categoryId: product.categoryId,
+                    brandId: product.brandId ?? "",
+                    imageUrl: product.images[0]?.url ?? ""
+                  }}
+                />
+              </AdminListItem>
+            ))
+          ) : (
+            <div className="rounded-[1.8rem] border border-dashed border-white/15 px-5 py-8 text-sm text-slate-300">
+              Filtreye uyan urun bulunamadi.
+            </div>
+          )}
+        </div>
+      </AdminPanel>
 
       {pagination.totalPages > 1 ? (
-        <section className="flex items-center justify-between rounded-[2rem] border border-white/10 bg-white/5 p-4">
-          <Link
-            href={buildProductLink(currentFilters, {
-              page: pagination.hasPreviousPage ? String(page - 1) : String(page)
-            })}
-            className={`rounded-full px-4 py-2 text-sm font-bold ${pagination.hasPreviousPage ? "bg-white text-slate-950" : "pointer-events-none bg-white/10 text-slate-500"}`}
-          >
-            Önceki
-          </Link>
-          <p className="text-sm text-slate-300">
-            Sayfa {pagination.page} / {pagination.totalPages}
-          </p>
-          <Link
-            href={buildProductLink(currentFilters, {
-              page: pagination.hasNextPage ? String(page + 1) : String(page)
-            })}
-            className={`rounded-full px-4 py-2 text-sm font-bold ${pagination.hasNextPage ? "bg-white text-slate-950" : "pointer-events-none bg-white/10 text-slate-500"}`}
-          >
-            Sonraki
-          </Link>
-        </section>
+        <AdminPanel>
+          <div className="flex items-center justify-between gap-4">
+            <Link
+              href={buildProductLink(currentFilters, {
+                page: pagination.hasPreviousPage ? String(page - 1) : String(page)
+              })}
+              className={`rounded-full px-4 py-2 text-sm font-bold ${
+                pagination.hasPreviousPage
+                  ? "bg-white text-slate-950"
+                  : "pointer-events-none bg-white/10 text-slate-500"
+              }`}
+            >
+              Onceki
+            </Link>
+            <p className="text-sm text-slate-300">
+              Sayfa {pagination.page} / {pagination.totalPages}
+            </p>
+            <Link
+              href={buildProductLink(currentFilters, {
+                page: pagination.hasNextPage ? String(page + 1) : String(page)
+              })}
+              className={`rounded-full px-4 py-2 text-sm font-bold ${
+                pagination.hasNextPage
+                  ? "bg-white text-slate-950"
+                  : "pointer-events-none bg-white/10 text-slate-500"
+              }`}
+            >
+              Sonraki
+            </Link>
+          </div>
+        </AdminPanel>
       ) : null}
     </div>
   );
 }
 
 type ProductFormProps = {
-  action: (formData: FormData) => Promise<void>;
+  action: (
+    state: ActionResult | null,
+    formData: FormData
+  ) => Promise<ActionResult>;
   submitLabel: string;
   categories: Array<{ id: string; name: string }>;
   brands: Array<{ id: string; name: string }>;
   productId?: string;
+  resetOnSuccess?: boolean;
   defaultValues?: {
     name: string;
     slug: string;
@@ -293,42 +371,47 @@ function ProductForm({
   categories,
   brands,
   productId,
+  resetOnSuccess = false,
   defaultValues
 }: ProductFormProps) {
   return (
-    <form action={action} className="mt-6 grid gap-4">
+    <AdminActionForm action={action} className="mt-6 grid gap-4" resetOnSuccess={resetOnSuccess}>
       {productId ? <input type="hidden" name="productId" value={productId} /> : null}
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Input name="name" placeholder="Ürün adı" defaultValue={defaultValues?.name} required />
-        <Input name="slug" placeholder="urun-slug" defaultValue={defaultValues?.slug} required />
+        <Input name="name" placeholder="Urun adi" defaultValue={defaultValues?.name} required className={inputClass} />
+        <Input name="slug" placeholder="urun-slug" defaultValue={defaultValues?.slug} required className={inputClass} />
         <Input
           name="shortDescription"
-          placeholder="Kısa açıklama"
+          placeholder="Kisa aciklama"
           defaultValue={defaultValues?.shortDescription}
+          className={inputClass}
         />
-        <Input name="barcode" placeholder="Barcode" defaultValue={defaultValues?.barcode} />
+        <Input name="barcode" placeholder="Barcode" defaultValue={defaultValues?.barcode} className={inputClass} />
         <Input
           name="imageUrl"
           type="url"
           placeholder="https://..."
           defaultValue={defaultValues?.imageUrl}
+          className={inputClass}
         />
-        <Input name="sku" placeholder="SKU" defaultValue={defaultValues?.sku} required />
+        <Input name="sku" placeholder="SKU" defaultValue={defaultValues?.sku} required className={inputClass} />
         <Input
           name="price"
           type="number"
           step="0.01"
-          placeholder="Liste fiyatı"
+          placeholder="Liste fiyati"
           defaultValue={defaultValues?.price}
           required
+          className={inputClass}
         />
         <Input
           name="salePrice"
           type="number"
           step="0.01"
-          placeholder="İndirimli satış fiyatı"
+          placeholder="Indirimli satis fiyati"
           defaultValue={defaultValues?.salePrice}
+          className={inputClass}
         />
         <Input
           name="compareAtPrice"
@@ -336,36 +419,42 @@ function ProductForm({
           step="0.01"
           placeholder="Eski fiyat"
           defaultValue={defaultValues?.compareAtPrice}
+          className={inputClass}
         />
-        <Input name="stock" type="number" placeholder="Stok" defaultValue={defaultValues?.stock} required />
+        <Input
+          name="stock"
+          type="number"
+          placeholder="Stok"
+          defaultValue={defaultValues?.stock}
+          required
+          className={inputClass}
+        />
         <Input
           name="lowStockThreshold"
           type="number"
-          placeholder="Düşük stok eşiği"
+          placeholder="Dusuk stok esigi"
           defaultValue={defaultValues?.lowStockThreshold ?? 5}
           required
+          className={inputClass}
         />
         <Input
           name="seoTitle"
-          placeholder="SEO başlığı"
+          placeholder="SEO basligi"
           defaultValue={defaultValues?.seoTitle}
+          className={inputClass}
         />
       </div>
 
       <Input
         name="seoDescription"
-        placeholder="SEO açıklaması"
+        placeholder="SEO aciklamasi"
         defaultValue={defaultValues?.seoDescription}
+        className={inputClass}
       />
 
       <div className="grid gap-4 md:grid-cols-2">
-        <select
-          name="categoryId"
-          defaultValue={defaultValues?.categoryId}
-          className="h-11 rounded-xl border border-white/10 bg-slate-950 px-4 text-sm text-white"
-          required
-        >
-          <option value="">Kategori seç</option>
+        <select name="categoryId" defaultValue={defaultValues?.categoryId} className={selectClass} required>
+          <option value="">Kategori sec</option>
           {categories.map((category) => (
             <option key={category.id} value={category.id}>
               {category.name}
@@ -373,12 +462,8 @@ function ProductForm({
           ))}
         </select>
 
-        <select
-          name="brandId"
-          defaultValue={defaultValues?.brandId}
-          className="h-11 rounded-xl border border-white/10 bg-slate-950 px-4 text-sm text-white"
-        >
-          <option value="">Marka seç</option>
+        <select name="brandId" defaultValue={defaultValues?.brandId} className={selectClass}>
+          <option value="">Marka sec</option>
           {brands.map((brand) => (
             <option key={brand.id} value={brand.id}>
               {brand.name}
@@ -390,12 +475,12 @@ function ProductForm({
       <textarea
         name="description"
         defaultValue={defaultValues?.description}
-        placeholder="Ürün açıklaması"
+        placeholder="Urun aciklamasi"
         required
-        className="min-h-32 w-full rounded-xl border border-white/10 bg-slate-950 p-4 text-sm text-white outline-none ring-white/10 transition focus:ring-4"
+        className={textareaClass}
       />
 
-      <div className="flex flex-col gap-3 text-sm md:flex-row md:items-center">
+      <div className="flex flex-col gap-3 rounded-[1.4rem] border border-white/10 bg-slate-950/50 p-4 text-sm text-slate-200 md:flex-row md:items-center">
         <label className="flex items-center gap-2">
           <input type="checkbox" name="isActive" defaultChecked={defaultValues?.isActive ?? true} />
           Aktif
@@ -406,11 +491,15 @@ function ProductForm({
             name="isFeatured"
             defaultChecked={defaultValues?.isFeatured ?? false}
           />
-          Öne çıkan
+          One cikan
         </label>
       </div>
 
-      <Button className="w-full md:w-auto">{submitLabel}</Button>
-    </form>
+      <AdminSubmitButton
+        className="w-full bg-emerald-400 text-slate-950 hover:bg-emerald-300 md:w-auto"
+        idleLabel={submitLabel}
+        pendingLabel="Kaydediliyor..."
+      />
+    </AdminActionForm>
   );
 }

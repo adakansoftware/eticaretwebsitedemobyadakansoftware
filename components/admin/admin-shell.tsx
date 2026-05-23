@@ -24,12 +24,12 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      <div className="sticky top-0 z-40 border-b border-white/10 bg-slate-950/95 backdrop-blur md:hidden">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.12),transparent_24%),radial-gradient(circle_at_top_right,rgba(56,189,248,0.08),transparent_20%),linear-gradient(180deg,#020617_0%,#08111f_48%,#020617_100%)] text-slate-100">
+      <div className="sticky top-0 z-40 border-b border-white/10 bg-slate-950/90 backdrop-blur-xl md:hidden">
         <div className="px-4 py-4">
           <Link
             href="/admin"
-            className="block rounded-[1.4rem] border border-white/10 bg-white/5 p-4"
+            className="block rounded-[1.4rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.04))] p-4 shadow-[0_16px_40px_rgba(2,6,23,0.18)]"
           >
             <p className="text-[0.68rem] font-bold uppercase tracking-[0.28em] text-emerald-200/80">
               Commerce operations
@@ -58,8 +58,11 @@ export function AdminShell({ children }: { children: ReactNode }) {
         </nav>
       </div>
 
-      <aside className="fixed inset-y-0 left-0 hidden w-72 border-r border-white/10 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.14),_transparent_28%),linear-gradient(180deg,#020617_0%,#0f172a_100%)] p-6 md:block">
-        <Link href="/admin" className="block rounded-[1.8rem] border border-white/10 bg-white/5 p-5 backdrop-blur">
+      <aside className="fixed inset-y-0 left-0 hidden w-80 border-r border-white/10 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.14),_transparent_28%),linear-gradient(180deg,#020617_0%,#0b1220_100%)] p-6 md:block">
+        <Link
+          href="/admin"
+          className="block rounded-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.04))] p-5 backdrop-blur"
+        >
           <p className="text-[0.7rem] font-bold uppercase tracking-[0.3em] text-emerald-200/80">
             Commerce operations
           </p>
@@ -67,6 +70,12 @@ export function AdminShell({ children }: { children: ReactNode }) {
           <p className="mt-2 text-sm leading-6 text-slate-300">
             Siparis, katalog ve musteri operasyonlarini tek panelden yonet.
           </p>
+          <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold text-slate-300">
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">Backoffice</span>
+            <span className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-emerald-100">
+              Surekli kullanim
+            </span>
+          </div>
         </Link>
 
         <nav className="mt-8 grid gap-2 text-sm">
@@ -89,15 +98,33 @@ export function AdminShell({ children }: { children: ReactNode }) {
           })}
           <Link
             href="/"
-            className="mt-3 rounded-2xl border border-white/10 px-4 py-3 font-semibold text-emerald-200 transition hover:bg-white/5"
+            className="mt-4 rounded-2xl border border-white/10 px-4 py-3 font-semibold text-emerald-200 transition hover:bg-white/5"
           >
             Magazin vitrini
           </Link>
         </nav>
       </aside>
 
-      <main className="md:pl-72">
-        <div className="mx-auto max-w-7xl p-6 md:p-10">{children}</div>
+      <main className="md:pl-80">
+        <div className="mx-auto max-w-[1600px] p-5 md:p-8 xl:p-10">
+          <div className="mb-6 hidden items-center justify-between rounded-[1.5rem] border border-white/10 bg-white/[0.03] px-5 py-4 backdrop-blur md:flex">
+            <div>
+              <p className="text-[0.68rem] font-bold uppercase tracking-[0.28em] text-slate-400">
+                Admin workspace
+              </p>
+              <p className="mt-2 text-sm text-slate-300">
+                Operasyon, katalog ve siparis akislarini yogun kullanim odakli panelde yonet.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-300">
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">Canli kontrol</span>
+              <span className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-emerald-100">
+                Admin yetkisi aktif
+              </span>
+            </div>
+          </div>
+          {children}
+        </div>
       </main>
     </div>
   );
