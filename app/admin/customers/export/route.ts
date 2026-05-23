@@ -13,11 +13,21 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q")?.trim();
   const role = searchParams.get("role")?.trim();
+  const dateFrom = searchParams.get("dateFrom")?.trim();
+  const dateTo = searchParams.get("dateTo")?.trim();
   const roleFilter: "ADMIN" | "USER" | undefined =
     role === "ADMIN" || role === "USER" ? role : undefined;
 
   const where: Prisma.UserWhereInput = {
     ...(roleFilter ? { role: roleFilter } : {}),
+    ...((dateFrom || dateTo)
+      ? {
+          createdAt: {
+            ...(dateFrom ? { gte: new Date(`${dateFrom}T00:00:00.000Z`) } : {}),
+            ...(dateTo ? { lte: new Date(`${dateTo}T23:59:59.999Z`) } : {})
+          }
+        }
+      : {}),
     ...(q
       ? {
           OR: [

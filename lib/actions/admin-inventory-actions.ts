@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { createAdminAuditLog } from "@/lib/admin-audit";
 import { actionError, actionSuccess, type ActionResult } from "@/lib/action-response";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -14,7 +15,7 @@ async function adjustInventory(formData: FormData) {
     throw new Error(parsed.error.issues[0]?.message ?? "Envanter duzeltme verisi gecersiz");
   }
 
-  await prisma.$transaction(async (tx) => {
+  const auditContext = await prisma.$transaction(async (tx) => {
     const product = await tx.product.findUnique({
       where: { id: parsed.data.productId }
     });
@@ -43,6 +44,25 @@ async function adjustInventory(formData: FormData) {
         note: parsed.data.note
       }
     });
+
+    return {
+      productId: product.id,
+      productName: product.name,
+      nextStock
+    };
+  });
+
+  await createAdminAuditLog({
+    action: "ADJUST_INVENTORY",
+    entityType: "PRODUCT",
+    entityId: auditContext.productId,
+    summary: `Envanter duzeltildi: ${auditContext.productName}`,
+    metadata: {
+      direction: parsed.data.direction,
+      quantity: parsed.data.quantity,
+      reason: parsed.data.reason,
+      stockAfter: auditContext.nextStock
+    }
   });
 
   revalidatePath("/admin/inventory");

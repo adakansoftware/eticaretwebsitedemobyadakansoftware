@@ -61,6 +61,7 @@ model User {
   orders         Order[]
   reviews        Review[]
   wishlistItems  WishlistItem[]
+  adminAuditLogs AdminAuditLog[]
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 }
@@ -373,4 +374,19 @@ model InventoryLog {
   createdAt  DateTime        @default(now())
 
   @@index([productId])
+}
+
+model AdminAuditLog {
+  id          String   @id @default(cuid())
+  adminUserId String
+  action      String
+  entityType  String
+  entityId    String?
+  summary     String
+  metadata    Json?
+  adminUser   User     @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@index([adminUserId, createdAt])
+  @@index([entityType, entityId])
 }

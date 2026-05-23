@@ -15,6 +15,7 @@ const navigation = [
   { href: "/admin/banners", label: "Bannerlar" },
   { href: "/admin/reviews", label: "Yorumlar" },
   { href: "/admin/inventory", label: "Envanter loglari" },
+  { href: "/admin/audit", label: "Audit log" },
   { href: "/admin/customers", label: "Musteriler" },
   { href: "/admin/settings", label: "Site ayarlari" }
 ];

@@ -1,9 +1,11 @@
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { AdminActionForm } from "@/components/admin/admin-action-form";
+import { ConfirmSubmitButton } from "@/components/admin/confirm-submit-button";
+import { AdminSubmitButton } from "@/components/admin/admin-submit-button";
 import {
-  confirmManualPaymentAction,
-  updateAdminOrderAction
+  confirmManualPaymentFormAction,
+  updateAdminOrderFormAction
 } from "@/lib/actions/admin-order-actions";
 import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/utils";
@@ -163,7 +165,7 @@ export default async function AdminOrderDetailPage({ params }: OrderDetailPagePr
         <div className="space-y-6">
           <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6">
             <h2 className="text-2xl font-black text-white">Operasyon formu</h2>
-            <form action={updateAdminOrderAction} className="mt-6 grid gap-4">
+            <AdminActionForm action={updateAdminOrderFormAction} className="mt-6 grid gap-4">
               <input type="hidden" name="orderId" value={order.id} />
 
               <select
@@ -197,16 +199,20 @@ export default async function AdminOrderDetailPage({ params }: OrderDetailPagePr
                 className="min-h-32 rounded-2xl border border-white/10 bg-slate-950 p-4 text-sm text-white outline-none ring-white/10 transition focus:ring-4"
               />
 
-              <Button>Degisiklikleri kaydet</Button>
-            </form>
+              <AdminSubmitButton idleLabel="Degisiklikleri kaydet" pendingLabel="Kaydediliyor..." />
+            </AdminActionForm>
 
             {order.payment ? (
-              <form action={confirmManualPaymentAction} className="mt-4">
+              <AdminActionForm action={confirmManualPaymentFormAction} className="mt-4">
                 <input type="hidden" name="orderId" value={order.id} />
-                <Button variant="outline" className="w-full">
+                <ConfirmSubmitButton
+                  variant="outline"
+                  className="w-full"
+                  confirmMessage="Manuel odemeyi onaylamak istediginize emin misiniz?"
+                >
                   Manuel odemeyi onayla
-                </Button>
-              </form>
+                </ConfirmSubmitButton>
+              </AdminActionForm>
             ) : null}
           </div>
 

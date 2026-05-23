@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { createAdminAuditLog } from "@/lib/admin-audit";
+import { actionError, actionSuccess, type ActionResult } from "@/lib/action-response";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { orderAdminSchema } from "@/lib/validators";
@@ -99,6 +101,16 @@ export async function updateAdminOrderAction(formData: FormData) {
     }
   });
 
+  await createAdminAuditLog({
+    action: "UPDATE",
+    entityType: "ORDER",
+    entityId: parsed.data.orderId,
+    summary: `Siparis guncellendi: ${order.orderNumber}`,
+    metadata: {
+      status: parsed.data.status,
+      paymentStatus: parsed.data.paymentStatus ?? null
+    }
+  });
   revalidateOrderPaths(parsed.data.orderId);
 }
 
@@ -135,5 +147,36 @@ export async function confirmManualPaymentAction(formData: FormData) {
     }
   });
 
+  await createAdminAuditLog({
+    action: "CONFIRM_PAYMENT",
+    entityType: "ORDER",
+    entityId: orderId,
+    summary: `Manuel odeme onaylandi: ${order.orderNumber}`,
+    metadata: { orderNumber: order.orderNumber }
+  });
   revalidateOrderPaths(orderId);
+}
+
+export async function updateAdminOrderFormAction(
+  _state: ActionResult | null,
+  formData: FormData
+): Promise<ActionResult> {
+  try {
+    await updateAdminOrderAction(formData);
+    return actionSuccess(undefined, "Sipariş güncellendi.");
+  } catch (error) {
+    return actionError(error instanceof Error ? error.message : "Sipariş güncellenemedi.");
+  }
+}
+
+export async function confirmManualPaymentFormAction(
+  _state: ActionResult | null,
+  formData: FormData
+): Promise<ActionResult> {
+  try {
+    await confirmManualPaymentAction(formData);
+    return actionSuccess(undefined, "Manuel ödeme onaylandı.");
+  } catch (error) {
+    return actionError(error instanceof Error ? error.message : "Manuel ödeme onaylanamadı.");
+  }
 }

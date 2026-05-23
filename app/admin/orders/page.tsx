@@ -25,6 +25,9 @@ type AdminOrdersPageProps = {
     q?: string;
     status?: string;
     paymentStatus?: string;
+    paymentMethod?: string;
+    dateFrom?: string;
+    dateTo?: string;
     page?: string;
   }>;
 };
@@ -52,6 +55,9 @@ export default async function AdminOrdersPage({ searchParams }: AdminOrdersPageP
   const q = resolvedSearchParams?.q?.trim();
   const status = resolvedSearchParams?.status?.trim();
   const paymentStatus = resolvedSearchParams?.paymentStatus?.trim();
+  const paymentMethod = resolvedSearchParams?.paymentMethod?.trim();
+  const dateFrom = resolvedSearchParams?.dateFrom?.trim();
+  const dateTo = resolvedSearchParams?.dateTo?.trim();
   const page = getPageValue(resolvedSearchParams?.page, 1);
 
   const orderStatusFilter = orderStatuses.find((item) => item === status);
@@ -60,6 +66,19 @@ export default async function AdminOrdersPage({ searchParams }: AdminOrdersPageP
   const where: Prisma.OrderWhereInput = {
     ...(orderStatusFilter ? { status: orderStatusFilter } : {}),
     ...(paymentStatusFilter ? { payment: { is: { status: paymentStatusFilter } } } : {}),
+    ...(
+      paymentMethod === "BANK_TRANSFER" || paymentMethod === "CASH_ON_DELIVERY"
+        ? { paymentMethod }
+        : {}
+    ),
+    ...((dateFrom || dateTo)
+      ? {
+          createdAt: {
+            ...(dateFrom ? { gte: new Date(`${dateFrom}T00:00:00.000Z`) } : {}),
+            ...(dateTo ? { lte: new Date(`${dateTo}T23:59:59.999Z`) } : {})
+          }
+        }
+      : {}),
     ...(q
       ? {
           OR: [
@@ -84,7 +103,17 @@ export default async function AdminOrdersPage({ searchParams }: AdminOrdersPageP
   ]);
 
   const pagination = getPaginationMeta(totalItems, page, DEFAULT_PAGE_SIZE);
-  const currentFilters = { q, status: orderStatusFilter, paymentStatus: paymentStatusFilter };
+  const currentFilters = {
+    q,
+    status: orderStatusFilter,
+    paymentStatus: paymentStatusFilter,
+    paymentMethod:
+      paymentMethod === "BANK_TRANSFER" || paymentMethod === "CASH_ON_DELIVERY"
+        ? paymentMethod
+        : undefined,
+    dateFrom,
+    dateTo
+  };
   const exportHref = `/admin/orders/export?${new URLSearchParams(
     Object.entries(currentFilters).filter(([, value]) => value) as Array<[string, string]>
   ).toString()}`;
@@ -107,7 +136,7 @@ export default async function AdminOrdersPage({ searchParams }: AdminOrdersPageP
       </section>
 
       <section className="rounded-[2rem] border border-white/10 bg-white/5 p-6">
-        <form className="grid gap-4 xl:grid-cols-[1fr_220px_220px_auto]">
+        <form className="grid gap-4 xl:grid-cols-[1fr_220px_220px_220px_180px_180px_auto]">
           <Input
             name="q"
             defaultValue={q}
@@ -138,6 +167,27 @@ export default async function AdminOrdersPage({ searchParams }: AdminOrdersPageP
               </option>
             ))}
           </select>
+          <select
+            name="paymentMethod"
+            defaultValue={currentFilters.paymentMethod ?? ""}
+            className="h-11 rounded-2xl border border-white/10 bg-slate-950 px-4 text-sm text-white"
+          >
+            <option value="">Tum odeme yontemleri</option>
+            <option value="BANK_TRANSFER">BANK_TRANSFER</option>
+            <option value="CASH_ON_DELIVERY">CASH_ON_DELIVERY</option>
+          </select>
+          <Input
+            name="dateFrom"
+            type="date"
+            defaultValue={dateFrom}
+            className="border-white/10 bg-slate-950 text-white ring-white/10"
+          />
+          <Input
+            name="dateTo"
+            type="date"
+            defaultValue={dateTo}
+            className="border-white/10 bg-slate-950 text-white ring-white/10"
+          />
           <Button className="w-full xl:w-auto">Filtrele</Button>
         </form>
       </section>

@@ -1,5 +1,7 @@
-import { Button } from "@/components/ui/button";
-import { deleteReviewAction, updateReviewStatusAction } from "@/lib/actions/admin-review-actions";
+import { AdminActionForm } from "@/components/admin/admin-action-form";
+import { ConfirmSubmitButton } from "@/components/admin/confirm-submit-button";
+import { AdminSubmitButton } from "@/components/admin/admin-submit-button";
+import { deleteReviewFormAction, updateReviewStatusFormAction } from "@/lib/actions/admin-review-actions";
 import { prisma } from "@/lib/prisma";
 
 type ReviewsPageProps = {
@@ -102,7 +104,7 @@ export default async function AdminReviewsPage({ searchParams }: ReviewsPageProp
                 </div>
 
                 <div className="min-w-[280px] space-y-3">
-                  <form action={updateReviewStatusAction} className="grid gap-3">
+                  <AdminActionForm action={updateReviewStatusFormAction} className="grid gap-3">
                     <input type="hidden" name="reviewId" value={review.id} />
                     <select
                       name="status"
@@ -113,15 +115,19 @@ export default async function AdminReviewsPage({ searchParams }: ReviewsPageProp
                       <option value="APPROVED">Onayla</option>
                       <option value="REJECTED">Reddet</option>
                     </select>
-                    <Button>Durumu guncelle</Button>
-                  </form>
+                    <AdminSubmitButton idleLabel="Durumu guncelle" pendingLabel="Guncelleniyor..." />
+                  </AdminActionForm>
 
-                  <form action={deleteReviewAction}>
+                  <AdminActionForm action={deleteReviewFormAction}>
                     <input type="hidden" name="reviewId" value={review.id} />
-                    <Button variant="outline" className="w-full">
+                    <ConfirmSubmitButton
+                      variant="outline"
+                      className="w-full"
+                      confirmMessage="Bu yorumu silmek istediginize emin misiniz?"
+                    >
                       Yorumu sil
-                    </Button>
-                  </form>
+                    </ConfirmSubmitButton>
+                  </AdminActionForm>
                 </div>
               </div>
             </article>

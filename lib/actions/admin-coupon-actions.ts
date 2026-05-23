@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { createAdminAuditLog } from "@/lib/admin-audit";
+import { actionError, actionSuccess, type ActionResult } from "@/lib/action-response";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { couponAdminSchema } from "@/lib/validators";
@@ -41,6 +43,13 @@ export async function createCouponAction(formData: FormData) {
   if (existing) throw new Error("Bu kupon kodu zaten kullaniliyor");
 
   await prisma.coupon.create({ data });
+  await createAdminAuditLog({
+    action: "CREATE",
+    entityType: "COUPON",
+    entityId: data.code,
+    summary: `Kupon olusturuldu: ${data.code}`,
+    metadata: { code: data.code, isActive: data.isActive }
+  });
   revalidateCouponPaths();
 }
 
@@ -60,6 +69,13 @@ export async function updateCouponAction(formData: FormData) {
     where: { id: couponId },
     data
   });
+  await createAdminAuditLog({
+    action: "UPDATE",
+    entityType: "COUPON",
+    entityId: couponId,
+    summary: `Kupon guncellendi: ${data.code}`,
+    metadata: { code: data.code, isActive: data.isActive }
+  });
 
   revalidateCouponPaths();
 }
@@ -69,6 +85,50 @@ export async function deleteCouponAction(formData: FormData) {
   const couponId = String(formData.get("couponId") ?? "");
   if (!couponId) throw new Error("Kupon bulunamadi");
 
+  const coupon = await prisma.coupon.findUnique({ where: { id: couponId } });
   await prisma.coupon.delete({ where: { id: couponId } });
+  await createAdminAuditLog({
+    action: "DELETE",
+    entityType: "COUPON",
+    entityId: couponId,
+    summary: `Kupon silindi: ${coupon?.code ?? couponId}`,
+    metadata: { code: coupon?.code ?? null }
+  });
   revalidateCouponPaths();
+}
+
+export async function createCouponFormAction(
+  _state: ActionResult | null,
+  formData: FormData
+): Promise<ActionResult> {
+  try {
+    await createCouponAction(formData);
+    return actionSuccess(undefined, "Kupon oluşturuldu.");
+  } catch (error) {
+    return actionError(error instanceof Error ? error.message : "Kupon oluşturulamadı.");
+  }
+}
+
+export async function updateCouponFormAction(
+  _state: ActionResult | null,
+  formData: FormData
+): Promise<ActionResult> {
+  try {
+    await updateCouponAction(formData);
+    return actionSuccess(undefined, "Kupon güncellendi.");
+  } catch (error) {
+    return actionError(error instanceof Error ? error.message : "Kupon güncellenemedi.");
+  }
+}
+
+export async function deleteCouponFormAction(
+  _state: ActionResult | null,
+  formData: FormData
+): Promise<ActionResult> {
+  try {
+    await deleteCouponAction(formData);
+    return actionSuccess(undefined, "Kupon silindi.");
+  } catch (error) {
+    return actionError(error instanceof Error ? error.message : "Kupon silinemedi.");
+  }
 }

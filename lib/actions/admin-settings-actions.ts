@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { createAdminAuditLog } from "@/lib/admin-audit";
 import { actionError, actionSuccess, type ActionResult } from "@/lib/action-response";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -29,6 +30,18 @@ async function updateSiteSettings(formData: FormData) {
       }
     });
   }
+
+  await createAdminAuditLog({
+    action: "UPDATE",
+    entityType: "SITE_SETTINGS",
+    entityId: current?.id ?? "SITE_SETTINGS",
+    summary: "Site ayarlari guncellendi",
+    metadata: {
+      siteName: parsed.data.siteName,
+      shippingFee: parsed.data.shippingFee,
+      freeShippingThreshold: parsed.data.freeShippingThreshold ?? null
+    }
+  });
 
   revalidatePath("/admin/settings");
   revalidatePath("/");

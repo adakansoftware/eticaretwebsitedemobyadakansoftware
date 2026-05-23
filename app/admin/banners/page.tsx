@@ -1,11 +1,14 @@
 import Image from "next/image";
-import { Button } from "@/components/ui/button";
+import { AdminActionForm } from "@/components/admin/admin-action-form";
+import { ConfirmSubmitButton } from "@/components/admin/confirm-submit-button";
+import { AdminSubmitButton } from "@/components/admin/admin-submit-button";
 import { Input } from "@/components/ui/input";
 import {
-  createBannerAction,
-  deleteBannerAction,
-  updateBannerAction
+  createBannerFormAction,
+  deleteBannerFormAction,
+  updateBannerFormAction
 } from "@/lib/actions/admin-banner-actions";
+import type { ActionResult } from "@/lib/action-response";
 import { prisma } from "@/lib/prisma";
 
 export default async function AdminBannersPage() {
@@ -25,7 +28,7 @@ export default async function AdminBannersPage() {
 
       <section className="rounded-[2rem] border border-white/10 bg-white/5 p-6">
         <h2 className="text-xl font-black text-white">Yeni banner ekle</h2>
-        <BannerForm action={createBannerAction} submitLabel="Banneri olustur" />
+        <BannerForm action={createBannerFormAction} submitLabel="Banneri olustur" resetOnSuccess />
       </section>
 
       <section className="grid gap-4">
@@ -41,14 +44,19 @@ export default async function AdminBannersPage() {
                         Siralama {banner.sortOrder} · {banner.isActive ? "Aktif" : "Pasif"}
                       </p>
                     </div>
-                    <form action={deleteBannerAction}>
+                    <AdminActionForm action={deleteBannerFormAction}>
                       <input type="hidden" name="bannerId" value={banner.id} />
-                      <Button variant="outline">Sil</Button>
-                    </form>
+                      <ConfirmSubmitButton
+                        variant="outline"
+                        confirmMessage={`"${banner.title}" bannerini silmek istediginize emin misiniz?`}
+                      >
+                        Sil
+                      </ConfirmSubmitButton>
+                    </AdminActionForm>
                   </div>
 
                   <BannerForm
-                    action={updateBannerAction}
+                    action={updateBannerFormAction}
                     submitLabel="Degisiklikleri kaydet"
                     bannerId={banner.id}
                     defaultValues={{
@@ -100,9 +108,10 @@ export default async function AdminBannersPage() {
 }
 
 type BannerFormProps = {
-  action: (formData: FormData) => Promise<void>;
+  action: (state: ActionResult | null, formData: FormData) => Promise<ActionResult>;
   submitLabel: string;
   bannerId?: string;
+  resetOnSuccess?: boolean;
   defaultValues?: {
     title: string;
     subtitle: string;
@@ -114,9 +123,9 @@ type BannerFormProps = {
   };
 };
 
-function BannerForm({ action, submitLabel, bannerId, defaultValues }: BannerFormProps) {
+function BannerForm({ action, submitLabel, bannerId, resetOnSuccess, defaultValues }: BannerFormProps) {
   return (
-    <form action={action} className="mt-6 grid gap-4">
+    <AdminActionForm action={action} className="mt-6 grid gap-4" resetOnSuccess={resetOnSuccess}>
       {bannerId ? <input type="hidden" name="bannerId" value={bannerId} /> : null}
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -158,7 +167,7 @@ function BannerForm({ action, submitLabel, bannerId, defaultValues }: BannerForm
         Aktif banner olarak yayinla
       </label>
 
-      <Button className="w-full md:w-auto">{submitLabel}</Button>
-    </form>
+      <AdminSubmitButton className="w-full md:w-auto" idleLabel={submitLabel} pendingLabel="Kaydediliyor..." />
+    </AdminActionForm>
   );
 }

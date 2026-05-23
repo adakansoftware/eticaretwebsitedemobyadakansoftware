@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { createAdminAuditLog } from "@/lib/admin-audit";
+import { actionError, actionSuccess, type ActionResult } from "@/lib/action-response";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { syncProductReviewStats } from "@/lib/review-stats";
@@ -26,6 +28,13 @@ export async function updateReviewStatusAction(formData: FormData) {
     include: { product: true }
   });
 
+  await createAdminAuditLog({
+    action: "UPDATE",
+    entityType: "REVIEW",
+    entityId: review.id,
+    summary: `Yorum durumu guncellendi: ${review.product.name}`,
+    metadata: { status: parsed.data.status, productId: review.productId }
+  });
   await syncProductReviewStats(review.productId);
   revalidateReviewPaths(review.product.slug);
 }
@@ -43,6 +52,37 @@ export async function deleteReviewAction(formData: FormData) {
   if (!review) throw new Error("Yorum bulunamadi");
 
   await prisma.review.delete({ where: { id: reviewId } });
+  await createAdminAuditLog({
+    action: "DELETE",
+    entityType: "REVIEW",
+    entityId: reviewId,
+    summary: `Yorum silindi: ${review.product.name}`,
+    metadata: { productId: review.productId }
+  });
   await syncProductReviewStats(review.productId);
   revalidateReviewPaths(review.product.slug);
+}
+
+export async function updateReviewStatusFormAction(
+  _state: ActionResult | null,
+  formData: FormData
+): Promise<ActionResult> {
+  try {
+    await updateReviewStatusAction(formData);
+    return actionSuccess(undefined, "Yorum durumu güncellendi.");
+  } catch (error) {
+    return actionError(error instanceof Error ? error.message : "Yorum durumu güncellenemedi.");
+  }
+}
+
+export async function deleteReviewFormAction(
+  _state: ActionResult | null,
+  formData: FormData
+): Promise<ActionResult> {
+  try {
+    await deleteReviewAction(formData);
+    return actionSuccess(undefined, "Yorum silindi.");
+  } catch (error) {
+    return actionError(error instanceof Error ? error.message : "Yorum silinemedi.");
+  }
 }

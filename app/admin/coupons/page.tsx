@@ -1,10 +1,13 @@
-import { Button } from "@/components/ui/button";
+import { AdminActionForm } from "@/components/admin/admin-action-form";
+import { ConfirmSubmitButton } from "@/components/admin/confirm-submit-button";
+import { AdminSubmitButton } from "@/components/admin/admin-submit-button";
 import { Input } from "@/components/ui/input";
 import {
-  createCouponAction,
-  deleteCouponAction,
-  updateCouponAction
+  createCouponFormAction,
+  deleteCouponFormAction,
+  updateCouponFormAction
 } from "@/lib/actions/admin-coupon-actions";
+import type { ActionResult } from "@/lib/action-response";
 import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/utils";
 
@@ -32,7 +35,7 @@ export default async function AdminCouponsPage() {
 
       <section className="rounded-[2rem] border border-white/10 bg-white/5 p-6">
         <h2 className="text-xl font-black text-white">Yeni kupon olustur</h2>
-        <CouponForm action={createCouponAction} submitLabel="Kuponu olustur" />
+        <CouponForm action={createCouponFormAction} submitLabel="Kuponu olustur" resetOnSuccess />
       </section>
 
       <section className="grid gap-4">
@@ -50,14 +53,19 @@ export default async function AdminCouponsPage() {
                     {coupon.isActive ? "Aktif" : "Pasif"}
                   </p>
                 </div>
-                <form action={deleteCouponAction}>
+                <AdminActionForm action={deleteCouponFormAction}>
                   <input type="hidden" name="couponId" value={coupon.id} />
-                  <Button variant="outline">Sil</Button>
-                </form>
+                  <ConfirmSubmitButton
+                    variant="outline"
+                    confirmMessage={`"${coupon.code}" kuponunu silmek istediginize emin misiniz?`}
+                  >
+                    Sil
+                  </ConfirmSubmitButton>
+                </AdminActionForm>
               </div>
 
               <CouponForm
-                action={updateCouponAction}
+                action={updateCouponFormAction}
                 submitLabel="Degisiklikleri kaydet"
                 couponId={coupon.id}
                 defaultValues={{
@@ -93,9 +101,10 @@ function toDatetimeLocal(value: Date) {
 }
 
 type CouponFormProps = {
-  action: (formData: FormData) => Promise<void>;
+  action: (state: ActionResult | null, formData: FormData) => Promise<ActionResult>;
   submitLabel: string;
   couponId?: string;
+  resetOnSuccess?: boolean;
   defaultValues?: {
     code: string;
     type: "PERCENTAGE" | "FIXED_AMOUNT";
@@ -109,9 +118,9 @@ type CouponFormProps = {
   };
 };
 
-function CouponForm({ action, submitLabel, couponId, defaultValues }: CouponFormProps) {
+function CouponForm({ action, submitLabel, couponId, resetOnSuccess, defaultValues }: CouponFormProps) {
   return (
-    <form action={action} className="mt-6 grid gap-4">
+    <AdminActionForm action={action} className="mt-6 grid gap-4" resetOnSuccess={resetOnSuccess}>
       {couponId ? <input type="hidden" name="couponId" value={couponId} /> : null}
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -163,7 +172,7 @@ function CouponForm({ action, submitLabel, couponId, defaultValues }: CouponForm
         Aktif kupon olarak yayinla
       </label>
 
-      <Button className="w-full md:w-auto">{submitLabel}</Button>
-    </form>
+      <AdminSubmitButton className="w-full md:w-auto" idleLabel={submitLabel} pendingLabel="Kaydediliyor..." />
+    </AdminActionForm>
   );
 }

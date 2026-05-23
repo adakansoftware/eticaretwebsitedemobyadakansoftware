@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
+import { PaymentMethod, PaymentStatus, Prisma } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
 import { toCsvContent } from "@/lib/csv";
 import { prisma } from "@/lib/prisma";
@@ -14,10 +14,24 @@ export async function GET(request: Request) {
   const q = searchParams.get("q")?.trim();
   const status = searchParams.get("status")?.trim();
   const paymentStatus = searchParams.get("paymentStatus")?.trim();
+  const paymentMethod = searchParams.get("paymentMethod")?.trim();
+  const dateFrom = searchParams.get("dateFrom")?.trim();
+  const dateTo = searchParams.get("dateTo")?.trim();
+  const paymentStatusFilter = Object.values(PaymentStatus).find((item) => item === paymentStatus);
+  const paymentMethodFilter = Object.values(PaymentMethod).find((item) => item === paymentMethod);
 
   const where: Prisma.OrderWhereInput = {
     ...(status ? { status: status as Prisma.OrderWhereInput["status"] } : {}),
-    ...(paymentStatus ? { payment: { status: paymentStatus as Prisma.OrderWhereInput["payment"] extends never ? never : "WAITING" | "CONFIRMED" | "REJECTED" | "REFUNDED" } } : {}),
+    ...(paymentStatusFilter ? { payment: { is: { status: paymentStatusFilter } } } : {}),
+    ...(paymentMethodFilter ? { paymentMethod: paymentMethodFilter } : {}),
+    ...((dateFrom || dateTo)
+      ? {
+          createdAt: {
+            ...(dateFrom ? { gte: new Date(`${dateFrom}T00:00:00.000Z`) } : {}),
+            ...(dateTo ? { lte: new Date(`${dateTo}T23:59:59.999Z`) } : {})
+          }
+        }
+      : {}),
     ...(q
       ? {
           OR: [

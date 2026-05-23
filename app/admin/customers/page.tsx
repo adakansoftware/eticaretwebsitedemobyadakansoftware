@@ -9,14 +9,18 @@ type AdminCustomersPageProps = {
   searchParams?: Promise<{
     q?: string;
     role?: string;
+    dateFrom?: string;
+    dateTo?: string;
     page?: string;
   }>;
 };
 
-function buildCustomerLink(q?: string, role?: string, page?: number) {
+function buildCustomerLink(q?: string, role?: string, dateFrom?: string, dateTo?: string, page?: number) {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
   if (role) params.set("role", role);
+  if (dateFrom) params.set("dateFrom", dateFrom);
+  if (dateTo) params.set("dateTo", dateTo);
   if (page && page > 1) params.set("page", String(page));
   const query = params.toString();
   return query ? `/admin/customers?${query}` : "/admin/customers";
@@ -26,12 +30,22 @@ export default async function AdminCustomersPage({ searchParams }: AdminCustomer
   const resolvedSearchParams = await searchParams;
   const q = resolvedSearchParams?.q?.trim();
   const role = resolvedSearchParams?.role?.trim();
+  const dateFrom = resolvedSearchParams?.dateFrom?.trim();
+  const dateTo = resolvedSearchParams?.dateTo?.trim();
   const page = getPageValue(resolvedSearchParams?.page, 1);
   const roleFilter: "ADMIN" | "USER" | undefined =
     role === "ADMIN" || role === "USER" ? role : undefined;
 
   const where: Prisma.UserWhereInput = {
     ...(roleFilter ? { role: roleFilter } : {}),
+    ...((dateFrom || dateTo)
+      ? {
+          createdAt: {
+            ...(dateFrom ? { gte: new Date(`${dateFrom}T00:00:00.000Z`) } : {}),
+            ...(dateTo ? { lte: new Date(`${dateTo}T23:59:59.999Z`) } : {})
+          }
+        }
+      : {}),
     ...(q
       ? {
           OR: [
@@ -71,7 +85,7 @@ export default async function AdminCustomersPage({ searchParams }: AdminCustomer
           <Button asChild variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10">
             <Link
               href={`/admin/customers/export?${new URLSearchParams(
-                Object.entries({ q, role: roleFilter }).filter(([, value]) => value) as Array<[string, string]>
+                Object.entries({ q, role: roleFilter, dateFrom, dateTo }).filter(([, value]) => value) as Array<[string, string]>
               ).toString()}`}
             >
               CSV dışa aktar
@@ -81,7 +95,7 @@ export default async function AdminCustomersPage({ searchParams }: AdminCustomer
       </section>
 
       <section className="rounded-[2rem] border border-white/10 bg-white/5 p-6">
-        <form className="grid gap-4 lg:grid-cols-[1fr_220px_auto]">
+        <form className="grid gap-4 lg:grid-cols-[1fr_220px_180px_180px_auto]">
           <Input
             name="q"
             defaultValue={q}
@@ -97,6 +111,18 @@ export default async function AdminCustomersPage({ searchParams }: AdminCustomer
             <option value="USER">Müşteri</option>
             <option value="ADMIN">Admin</option>
           </select>
+          <Input
+            name="dateFrom"
+            type="date"
+            defaultValue={dateFrom}
+            className="border-white/10 bg-slate-950 text-white ring-white/10"
+          />
+          <Input
+            name="dateTo"
+            type="date"
+            defaultValue={dateTo}
+            className="border-white/10 bg-slate-950 text-white ring-white/10"
+          />
           <Button className="w-full lg:w-auto">Filtrele</Button>
         </form>
       </section>
@@ -157,7 +183,7 @@ export default async function AdminCustomersPage({ searchParams }: AdminCustomer
       {pagination.totalPages > 1 ? (
         <section className="flex items-center justify-between rounded-[2rem] border border-white/10 bg-white/5 p-4">
           <Link
-            href={buildCustomerLink(q, role, pagination.hasPreviousPage ? page - 1 : page)}
+            href={buildCustomerLink(q, role, dateFrom, dateTo, pagination.hasPreviousPage ? page - 1 : page)}
             className={`rounded-full px-4 py-2 text-sm font-bold ${pagination.hasPreviousPage ? "bg-white text-slate-950" : "pointer-events-none bg-white/10 text-slate-500"}`}
           >
             Önceki
@@ -166,7 +192,7 @@ export default async function AdminCustomersPage({ searchParams }: AdminCustomer
             Sayfa {pagination.page} / {pagination.totalPages}
           </p>
           <Link
-            href={buildCustomerLink(q, role, pagination.hasNextPage ? page + 1 : page)}
+            href={buildCustomerLink(q, role, dateFrom, dateTo, pagination.hasNextPage ? page + 1 : page)}
             className={`rounded-full px-4 py-2 text-sm font-bold ${pagination.hasNextPage ? "bg-white text-slate-950" : "pointer-events-none bg-white/10 text-slate-500"}`}
           >
             Sonraki
