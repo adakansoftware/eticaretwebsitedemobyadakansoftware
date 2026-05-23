@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Button } from "@/components/ui/button";
 import { Header } from "@/components/storefront/header";
-import { prisma } from "@/lib/prisma";
+import { getSiteSettings } from "@/lib/site-settings";
 
 export const metadata: Metadata = {
   title: "İletişim",
@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 export default async function ContactPage() {
-  const settings = await prisma.siteSettings.findFirst();
+  const settings = await getSiteSettings();
 
   const contactCards = [
     { title: "Telefon", value: settings?.contactPhone ?? "+90 555 000 00 00" },

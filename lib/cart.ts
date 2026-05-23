@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { getSiteSettings } from "@/lib/site-settings";
 import { getSession } from "@/lib/auth";
 import { getEffectiveUnitPrice } from "@/lib/commerce";
 
@@ -161,7 +162,7 @@ export async function calculateCartTotals(cartId?: string, couponCode?: string) 
     discountTotal = Math.min(discountTotal, subtotal);
   }
 
-  const settings = await prisma.siteSettings.findFirst();
+  const settings = await getSiteSettings();
   const discountedSubtotal = Math.max(subtotal - discountTotal, 0);
   const shippingFee =
     settings?.freeShippingThreshold && discountedSubtotal >= Number(settings.freeShippingThreshold)

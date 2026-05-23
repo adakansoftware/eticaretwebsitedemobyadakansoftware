@@ -5,6 +5,7 @@ import { checkoutAction } from "@/lib/actions/checkout-actions";
 import { calculateCartTotals, getCart } from "@/lib/cart";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getSiteSettings } from "@/lib/site-settings";
 import { formatPrice } from "@/lib/utils";
 
 export default async function CheckoutPage() {
@@ -15,7 +16,7 @@ export default async function CheckoutPage() {
       orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }]
     }),
     getCart(),
-    prisma.siteSettings.findFirst()
+    getSiteSettings()
   ]);
 
   const totals = await calculateCartTotals(cart.id, cart.couponCode ?? undefined).catch(() => ({

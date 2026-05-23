@@ -10,7 +10,7 @@ import {
 } from "@/lib/actions/cart-actions";
 import { calculateCartTotals, getCart } from "@/lib/cart";
 import { getEffectiveUnitPrice } from "@/lib/commerce";
-import { prisma } from "@/lib/prisma";
+import { getSiteSettings } from "@/lib/site-settings";
 import { formatPrice } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 };
 
 export default async function CartPage() {
-  const [cart, settings] = await Promise.all([getCart(), prisma.siteSettings.findFirst()]);
+  const [cart, settings] = await Promise.all([getCart(), getSiteSettings()]);
   const totals = await calculateCartTotals(cart.id, cart.couponCode ?? undefined).catch(() => ({
     subtotal: 0,
     shippingTotal: 0,

@@ -14,6 +14,7 @@ export async function checkoutAction(formData: FormData) {
     throw new Error(parsed.error.issues[0]?.message ?? "Gecersiz checkout");
   }
 
+  const normalizedCouponCode = parsed.data.couponCode?.trim().toUpperCase() || undefined;
   const cart = await getCart();
   const fullCart = await prisma.cart.findUnique({
     where: { id: cart.id },
@@ -39,26 +40,46 @@ export async function checkoutAction(formData: FormData) {
     throw new Error("Adres bulunamadi");
   }
 
-  const totals = await calculateCartTotals(cart.id, parsed.data.couponCode);
+  const totals = await calculateCartTotals(cart.id, normalizedCouponCode);
   const order = await prisma.$transaction(async (tx) => {
     let couponCode: string | undefined;
+    const now = new Date();
 
-    if (parsed.data.couponCode) {
+    if (normalizedCouponCode) {
       const coupon = await tx.coupon.findFirst({
         where: {
-          code: parsed.data.couponCode,
+          code: normalizedCouponCode,
           isActive: true,
-          OR: [{ startsAt: null }, { startsAt: { lte: new Date() } }],
-          AND: [{ OR: [{ endsAt: null }, { endsAt: { gte: new Date() } }] }]
+          OR: [{ startsAt: null }, { startsAt: { lte: now } }],
+          AND: [{ OR: [{ endsAt: null }, { endsAt: { gte: now } }] }]
         }
       });
 
       if (!coupon) throw new Error("Kupon gecersiz veya suresi dolmus");
+      if (coupon.minOrderAmount && totals.subtotal < Number(coupon.minOrderAmount)) {
+        throw new Error("Kupon minimum sepet tutarina ulasmadi");
+      }
+
       couponCode = coupon.code;
-      await tx.coupon.update({
-        where: { id: coupon.id },
-        data: { usedCount: { increment: 1 } }
-      });
+
+      if (coupon.usageLimit) {
+        const updatedCoupon = await tx.coupon.updateMany({
+          where: {
+            id: coupon.id,
+            usedCount: { lt: coupon.usageLimit }
+          },
+          data: { usedCount: { increment: 1 } }
+        });
+
+        if (updatedCoupon.count === 0) {
+          throw new Error("Kupon kullanim limitine ulasildi");
+        }
+      } else {
+        await tx.coupon.update({
+          where: { id: coupon.id },
+          data: { usedCount: { increment: 1 } }
+        });
+      }
     }
 
     for (const item of fullCart.items) {

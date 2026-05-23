@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
-import { prisma } from "@/lib/prisma";
 import { Footer } from "@/components/storefront/footer";
+import { getSiteSettings } from "@/lib/site-settings";
 import "./globals.css";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: {
@@ -13,16 +15,7 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const settings = await prisma.siteSettings.findFirst({
-    select: {
-      siteName: true,
-      contactPhone: true,
-      whatsappNumber: true,
-      email: true,
-      address: true,
-      instagram: true
-    }
-  });
+  const settings = await getSiteSettings();
 
   return (
     <html lang="tr" data-scroll-behavior="smooth">

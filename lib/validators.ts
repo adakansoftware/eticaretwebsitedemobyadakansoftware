@@ -41,7 +41,7 @@ export const checkoutSchema = z.object({
     .string()
     .max(32)
     .optional()
-    .transform((value) => value?.trim() || undefined)
+    .transform((value) => value?.trim().toUpperCase() || undefined)
 });
 
 export const addressSchema = z.object({

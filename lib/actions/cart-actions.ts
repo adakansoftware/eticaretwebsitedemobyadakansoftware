@@ -16,6 +16,11 @@ function revalidateCartSurface() {
   revalidatePath("/checkout");
 }
 
+async function getActiveCartId() {
+  const cart = await getCart();
+  return cart.id || null;
+}
+
 export async function addToCartAction(
   productId: string,
   quantity = 1
@@ -78,8 +83,13 @@ export async function updateCartItemQuantityAction(
     return actionError(parsed.error.issues[0]?.message ?? "Sepet guncellenemedi");
   }
 
-  const item = await prisma.cartItem.findUnique({
-    where: { id: parsed.data.itemId },
+  const cartId = await getActiveCartId();
+  if (!cartId) {
+    return actionError("Aktif sepet bulunamadi");
+  }
+
+  const item = await prisma.cartItem.findFirst({
+    where: { id: parsed.data.itemId, cartId },
     include: { product: true }
   });
 
@@ -115,8 +125,21 @@ export async function removeCartItemAction(
     return actionError(parsed.error.issues[0]?.message ?? "Sepet urunu silinemedi");
   }
 
+  const cartId = await getActiveCartId();
+  if (!cartId) {
+    return actionError("Aktif sepet bulunamadi");
+  }
+
+  const item = await prisma.cartItem.findFirst({
+    where: { id: parsed.data.itemId, cartId },
+    select: { id: true }
+  });
+  if (!item) {
+    return actionError("Sepet urunu bulunamadi");
+  }
+
   await prisma.cartItem.delete({
-    where: { id: parsed.data.itemId }
+    where: { id: item.id }
   });
 
   revalidateCartSurface();

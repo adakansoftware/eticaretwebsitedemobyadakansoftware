@@ -4,6 +4,7 @@ import { Header } from "@/components/storefront/header";
 import { ProductCard } from "@/components/storefront/product-card";
 import { TrustStrip } from "@/components/storefront/trust-strip";
 import { prisma } from "@/lib/prisma";
+import { getSiteSettings } from "@/lib/site-settings";
 import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
@@ -36,7 +37,7 @@ export default async function HomePage() {
       where: { isActive: true },
       orderBy: { sortOrder: "asc" }
     }),
-    prisma.siteSettings.findFirst()
+    getSiteSettings()
   ]);
 
   return (

@@ -1,13 +1,10 @@
 import Link from "next/link";
 import { ShoppingBag, UserRound } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getSiteSettings } from "@/lib/site-settings";
 
 export async function Header() {
-  const [user, settings] = await Promise.all([
-    getCurrentUser(),
-    prisma.siteSettings.findFirst({ select: { siteName: true } })
-  ]);
+  const [user, settings] = await Promise.all([getCurrentUser(), getSiteSettings()]);
 
   const siteName = settings?.siteName || "Adakan Commerce";
 
