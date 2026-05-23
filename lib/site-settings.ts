@@ -2,7 +2,7 @@ import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 
 export const getSiteSettings = cache(async () => {
-  return prisma.siteSettings.findFirst({
+  const settings = await prisma.siteSettings.findFirst({
     select: {
       siteName: true,
       contactPhone: true,
@@ -16,4 +16,16 @@ export const getSiteSettings = cache(async () => {
       freeShippingThreshold: true
     }
   });
+
+  if (!settings) {
+    return null;
+  }
+
+  return {
+    ...settings,
+    shippingFee: settings.shippingFee ? Number(settings.shippingFee) : 0,
+    freeShippingThreshold: settings.freeShippingThreshold
+      ? Number(settings.freeShippingThreshold)
+      : null
+  };
 });
