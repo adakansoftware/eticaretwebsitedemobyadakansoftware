@@ -208,6 +208,12 @@ export const orderAdminSchema = z.object({
     "REFUNDED"
   ]),
   adminNote: z.string().max(1000).optional().transform((value) => value || undefined),
+  trackingNumber: z.string().max(100).optional().transform((value) => value?.trim() || undefined),
+  trackingCarrier: z
+    .enum(["ARAS", "MNG", "YURTICI", "PTT", "SURAT", "DIGER"])
+    .optional()
+    .or(z.literal(""))
+    .transform((value) => value || undefined),
   paymentStatus: z
     .enum(["WAITING", "CONFIRMED", "REJECTED", "REFUNDED"])
     .optional()

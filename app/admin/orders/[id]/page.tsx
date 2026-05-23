@@ -2,26 +2,13 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { AdminActionForm } from "@/components/admin/admin-action-form";
 import { ConfirmSubmitButton } from "@/components/admin/confirm-submit-button";
-import { AdminSubmitButton } from "@/components/admin/admin-submit-button";
+import { OrderOperationsForm } from "@/components/admin/order-operations-form";
 import {
   confirmManualPaymentFormAction,
   updateAdminOrderFormAction
 } from "@/lib/actions/admin-order-actions";
 import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/utils";
-
-const orderStatuses = [
-  "PENDING",
-  "WAITING_PAYMENT",
-  "PAID",
-  "PREPARING",
-  "SHIPPED",
-  "DELIVERED",
-  "CANCELLED",
-  "REFUNDED"
-] as const;
-
-const paymentStatuses = ["WAITING", "CONFIRMED", "REJECTED", "REFUNDED"] as const;
 
 type OrderDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -71,6 +58,12 @@ export default async function AdminOrderDetailPage({ params }: OrderDetailPagePr
               <span className="text-slate-400">Yontem</span>
               <span className="font-bold text-white">{order.paymentMethod}</span>
             </div>
+            {order.trackingNumber ? (
+              <div className="mt-2 flex items-center justify-between gap-6">
+                <span className="text-slate-400">Takip</span>
+                <span className="font-bold text-white">{order.trackingNumber}</span>
+              </div>
+            ) : null}
           </div>
         </div>
       </section>
@@ -165,42 +158,15 @@ export default async function AdminOrderDetailPage({ params }: OrderDetailPagePr
         <div className="space-y-6">
           <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6">
             <h2 className="text-2xl font-black text-white">Operasyon formu</h2>
-            <AdminActionForm action={updateAdminOrderFormAction} className="mt-6 grid gap-4">
-              <input type="hidden" name="orderId" value={order.id} />
-
-              <select
-                name="status"
-                defaultValue={order.status}
-                className="h-11 rounded-2xl border border-white/10 bg-slate-950 px-4 text-sm text-white"
-              >
-                {orderStatuses.map((status) => (
-                  <option key={status} value={status}>
-                    {status}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                name="paymentStatus"
-                defaultValue={order.payment?.status ?? "WAITING"}
-                className="h-11 rounded-2xl border border-white/10 bg-slate-950 px-4 text-sm text-white"
-              >
-                {paymentStatuses.map((status) => (
-                  <option key={status} value={status}>
-                    {status}
-                  </option>
-                ))}
-              </select>
-
-              <textarea
-                name="adminNote"
-                defaultValue={order.adminNote ?? ""}
-                placeholder="Operasyon notu"
-                className="min-h-32 rounded-2xl border border-white/10 bg-slate-950 p-4 text-sm text-white outline-none ring-white/10 transition focus:ring-4"
-              />
-
-              <AdminSubmitButton idleLabel="Degisiklikleri kaydet" pendingLabel="Kaydediliyor..." />
-            </AdminActionForm>
+            <OrderOperationsForm
+              orderId={order.id}
+              status={order.status}
+              paymentStatus={order.payment?.status ?? "WAITING"}
+              adminNote={order.adminNote ?? ""}
+              trackingNumber={order.trackingNumber}
+              trackingCarrier={order.trackingCarrier}
+              action={updateAdminOrderFormAction}
+            />
 
             {order.payment ? (
               <AdminActionForm action={confirmManualPaymentFormAction} className="mt-4">
@@ -238,6 +204,13 @@ export default async function AdminOrderDetailPage({ params }: OrderDetailPagePr
                 <div>
                   <p className="text-slate-400">Musteri notu</p>
                   <p className="mt-1 whitespace-pre-line">{order.customerNote}</p>
+                </div>
+              ) : null}
+              {order.trackingNumber ? (
+                <div>
+                  <p className="text-slate-400">Kargo bilgisi</p>
+                  <p className="mt-1 font-bold text-white">{order.trackingNumber}</p>
+                  <p>{order.trackingCarrier ?? "Firma belirtilmedi"}</p>
                 </div>
               ) : null}
             </div>

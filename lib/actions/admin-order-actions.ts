@@ -93,6 +93,8 @@ export async function updateAdminOrderAction(formData: FormData) {
       data: {
         status: parsed.data.status,
         adminNote: parsed.data.adminNote ?? null,
+        trackingNumber: parsed.data.trackingNumber ?? null,
+        trackingCarrier: parsed.data.trackingCarrier ?? null,
         inventoryRestoredAt
       }
     });
@@ -116,7 +118,9 @@ export async function updateAdminOrderAction(formData: FormData) {
     summary: `Siparis guncellendi: ${order.orderNumber}`,
     metadata: {
       status: parsed.data.status,
-      paymentStatus: parsed.data.paymentStatus ?? null
+      paymentStatus: parsed.data.paymentStatus ?? null,
+      trackingNumber: parsed.data.trackingNumber ?? null,
+      trackingCarrier: parsed.data.trackingCarrier ?? null
     }
   });
   revalidateOrderPaths(parsed.data.orderId);

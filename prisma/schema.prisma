@@ -271,6 +271,8 @@ model Order {
   shippingCity     String
   shippingDistrict String
   shippingAddress  String
+  trackingNumber   String?
+  trackingCarrier  String?
   inventoryRestoredAt DateTime?
   user             User          @relation(fields: [userId], references: [id])
   address          Address?      @relation(fields: [addressId], references: [id])
