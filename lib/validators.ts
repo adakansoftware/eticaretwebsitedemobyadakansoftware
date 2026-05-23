@@ -11,6 +11,26 @@ export const loginSchema = z.object({
   password: z.string().min(1)
 });
 
+export const forgotPasswordSchema = z.object({
+  email: z.string().email("Gecerli bir e-posta adresi gir")
+});
+
+export const resetPasswordSchema = z
+  .object({
+    token: z.string().min(32, "Sifirlama baglantisi gecersiz"),
+    newPassword: z.string().min(8, "Sifre en az 8 karakter olmali"),
+    confirmPassword: z.string().min(8, "Sifre tekrari en az 8 karakter olmali")
+  })
+  .superRefine((value, ctx) => {
+    if (value.newPassword !== value.confirmPassword) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["confirmPassword"],
+        message: "Sifre tekrari yeni sifre ile ayni olmali"
+      });
+    }
+  });
+
 export const cartQuantitySchema = z.object({
   productId: z.string().min(1),
   quantity: z.number().int().min(1).max(99)

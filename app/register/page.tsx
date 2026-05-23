@@ -16,30 +16,8 @@ export default async function RegisterPage() {
   return (
     <AuthShell
       mode="register"
-      title="Uyelik ve admin girisini ayri okunan hale getirdik"
-      description="Bu ekran sadece musteri hesabi acmak icin kullanilir. Admin hesaplari burada olusturulmaz; mevcut admin kullanicilari giris ekranindan oturum acar."
-      navigation={
-        <div className="grid gap-3 sm:grid-cols-3">
-          <Link
-            href="/login"
-            className="rounded-full border border-slate-200 px-4 py-3 text-center text-sm font-bold text-slate-600 transition hover:text-slate-950"
-          >
-            Musteri girisi
-          </Link>
-          <Link
-            href="/register"
-            className="rounded-full bg-slate-950 px-4 py-3 text-center text-sm font-bold text-white shadow-sm"
-          >
-            Uye ol
-          </Link>
-          <Link
-            href="/admin-login"
-            className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-3 text-center text-sm font-bold text-emerald-950 transition hover:bg-emerald-100"
-          >
-            Admin girisi
-          </Link>
-        </div>
-      }
+      title="Yeni musteri hesabi olustur"
+      description="Bu ekran sadece musteri hesabi acmak icin kullanilir. Siparis ve adres yonetimi icin burada kayit ol."
       form={
         <form action={registerAction} className="space-y-6">
           <div>
@@ -56,17 +34,6 @@ export default async function RegisterPage() {
             <Button className="h-11 rounded-full bg-slate-950 text-white hover:bg-slate-800">
               Musteri hesabi olustur
             </Button>
-          </div>
-
-          <div className="rounded-[1.4rem] border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-            <p className="font-bold">Admin icin not:</p>
-            <p className="mt-1 leading-6">
-              Admin yetkisi bu ekrandan verilmez. Admin hesabin varsa{" "}
-              <Link className="font-bold underline underline-offset-4" href="/admin-login">
-                giris yap
-              </Link>{" "}
-              ve sistem seni panele yonlendirsin.
-            </p>
           </div>
 
           <p className="text-sm text-slate-600">

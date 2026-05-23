@@ -7,9 +7,33 @@ type AuthShellProps = {
   description: string;
   form: ReactNode;
   navigation?: ReactNode;
+  highlights?: Array<{
+    title: string;
+    body: string;
+    tone?: "default" | "accent";
+  }>;
 };
 
-export function AuthShell({ mode, title, description, form, navigation }: AuthShellProps) {
+const defaultHighlights = [
+  {
+    title: "Hizli alisveris",
+    body: "Siparislerini takip et, adreslerini yonet ve satin alma akisini hizlandir."
+  },
+  {
+    title: "Tek hesap duzeni",
+    body: "Favoriler, siparis gecmisi ve hesap bilgileri tek musteri hesabinda toplansin.",
+    tone: "accent" as const
+  }
+];
+
+export function AuthShell({
+  mode,
+  title,
+  description,
+  form,
+  navigation,
+  highlights = defaultHighlights
+}: AuthShellProps) {
   const isLogin = mode === "login";
 
   return (
@@ -41,18 +65,23 @@ export function AuthShell({ mode, title, description, form, navigation }: AuthSh
             </div>
 
             <div className="mt-10 grid gap-4 sm:grid-cols-2">
-              <div className="rounded-[1.6rem] border border-white/10 bg-white/5 p-5 backdrop-blur">
-                <p className="text-sm font-bold text-white">Musteri akisi</p>
-                <p className="mt-2 text-sm leading-6 text-slate-300">
-                  Siparislerini takip et, adreslerini yonet ve favorilerini tek hesapta tut.
-                </p>
-              </div>
-              <div className="rounded-[1.6rem] border border-emerald-400/20 bg-emerald-500/10 p-5 backdrop-blur">
-                <p className="text-sm font-bold text-emerald-100">Admin akisi</p>
-                <p className="mt-2 text-sm leading-6 text-emerald-50/90">
-                  Admin hesaplari bu ekrandan giris yapar ama yeni admin uyeligi buradan acilmaz.
-                </p>
-              </div>
+              {highlights.map((item) => (
+                <div
+                  key={item.title}
+                  className={
+                    item.tone === "accent"
+                      ? "rounded-[1.6rem] border border-emerald-400/20 bg-emerald-500/10 p-5 backdrop-blur"
+                      : "rounded-[1.6rem] border border-white/10 bg-white/5 p-5 backdrop-blur"
+                  }
+                >
+                  <p className={item.tone === "accent" ? "text-sm font-bold text-emerald-100" : "text-sm font-bold text-white"}>
+                    {item.title}
+                  </p>
+                  <p className={item.tone === "accent" ? "mt-2 text-sm leading-6 text-emerald-50/90" : "mt-2 text-sm leading-6 text-slate-300"}>
+                    {item.body}
+                  </p>
+                </div>
+              ))}
             </div>
           </div>
         </section>

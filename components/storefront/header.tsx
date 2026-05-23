@@ -48,13 +48,6 @@ export async function Header() {
             >
               Admin
             </Link>
-          ) : !user ? (
-            <Link
-              href="/admin-login"
-              className="hidden rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-950 transition hover:border-emerald-300 hover:bg-emerald-100 lg:inline-flex"
-            >
-              Admin girisi
-            </Link>
           ) : null}
 
           <Link
