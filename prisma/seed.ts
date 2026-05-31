@@ -4,6 +4,10 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("Seed script production ortaminda calistirilamaz.");
+  }
+
   await prisma.review.deleteMany();
   await prisma.wishlistItem.deleteMany();
   await prisma.inventoryLog.deleteMany();

@@ -106,6 +106,10 @@ export default async function AdminProductsPage({ searchParams }: AdminProductsP
 
   const pagination = getPaginationMeta(totalItems, page, DEFAULT_PAGE_SIZE);
   const currentFilters = { q, category, brand, status, stock };
+  const exportHref = `/admin/products/export?${new URLSearchParams(
+    Object.entries(currentFilters).filter(([, value]) => value) as Array<[string, string]>
+  ).toString()}`;
+
   const kpis = [
     {
       label: "Aktif Urun",
@@ -135,8 +139,22 @@ export default async function AdminProductsPage({ searchParams }: AdminProductsP
     <div className="space-y-8">
       <AdminPageHeader
         eyebrow="Catalog control"
-        title="Katalogu sadece yonetilen degil rahatca taranan bir yapıya cevir"
+        title="Katalogu sadece yonetilen degil rahatca taranan bir yapiya cevir"
         description="Urun olusturma, filtreleme ve stok takibini ayni dilde toparlayip katalog operasyonunu daha profesyonel hale getiriyoruz."
+        actions={
+          <>
+            <Button
+              asChild
+              variant="outline"
+              className="border-white/10 bg-white/5 text-white hover:bg-white/10"
+            >
+              <Link href={exportHref}>CSV disa aktar</Link>
+            </Button>
+            <Button asChild className="bg-emerald-400 text-slate-950 hover:bg-emerald-300">
+              <Link href="/admin/products?stock=low-stock">Dusuk stoklari ac</Link>
+            </Button>
+          </>
+        }
       />
 
       <AdminKpiStrip items={kpis} />

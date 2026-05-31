@@ -31,6 +31,30 @@ export const resetPasswordSchema = z
     }
   });
 
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Mevcut sifreni gir"),
+    newPassword: z.string().min(8, "Yeni sifre en az 8 karakter olmali"),
+    confirmPassword: z.string().min(8, "Sifre tekrari en az 8 karakter olmali")
+  })
+  .superRefine((value, ctx) => {
+    if (value.newPassword !== value.confirmPassword) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["confirmPassword"],
+        message: "Sifre tekrari yeni sifre ile ayni olmali"
+      });
+    }
+
+    if (value.currentPassword === value.newPassword) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["newPassword"],
+        message: "Yeni sifre mevcut sifreden farkli olmali"
+      });
+    }
+  });
+
 export const cartQuantitySchema = z.object({
   productId: z.string().min(1),
   variantId: z.string().optional().transform((value) => value?.trim() || undefined),

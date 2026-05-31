@@ -33,7 +33,7 @@ export function ProductCard({ product }: Props) {
           />
           <div className="absolute inset-x-4 top-4 flex items-center justify-between">
             <span className="rounded-full border border-white/60 bg-white/85 px-3 py-1 text-[0.66rem] font-bold uppercase tracking-[0.22em] text-slate-900 backdrop-blur">
-              {product.isFeatured ? "Öne çıkan" : "Yeni ürün"}
+              {product.isFeatured ? "One cikan" : "Yeni urun"}
             </span>
             <div className="flex items-center gap-2">
               {discountPercentage > 0 ? (
@@ -42,7 +42,7 @@ export function ProductCard({ product }: Props) {
                 </span>
               ) : null}
               <span className="rounded-full bg-emerald-900/92 px-3 py-1 text-xs font-bold text-white shadow-lg shadow-emerald-950/20">
-                {product.stock > 0 ? "Stokta" : "Tükendi"}
+                {product.stock > 0 ? "Stokta" : "Tukendi"}
               </span>
             </div>
           </div>
@@ -51,23 +51,23 @@ export function ProductCard({ product }: Props) {
         <div className="space-y-4 p-5">
           <div className="space-y-2">
             <p className="text-[0.68rem] font-bold uppercase tracking-[0.26em] text-amber-700">
-              Seçili ürün
+              Secili urun
             </p>
             <h3 className="line-clamp-2 text-xl font-black tracking-tight text-slate-950">
               {product.name}
             </h3>
             <p className="line-clamp-2 text-sm leading-6 text-slate-600">
               {product.shortDescription ??
-                "Günlük kullanım için seçilmiş, güvenli sipariş akışıyla sunulan ürün."}
+                "Gunluk kullanim icin secilmis, guvenli siparis akisiyla sunulan urun."}
             </p>
             <div className="flex items-center gap-2 text-sm text-slate-500">
               <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
               {product.ratingCount > 0 ? (
                 <span>
-                  {Number(product.ratingAverage).toFixed(1)} · {product.ratingCount} değerlendirme
+                  {Number(product.ratingAverage).toFixed(1)} · {product.ratingCount} degerlendirme
                 </span>
               ) : (
-                <span>Değerlendirme bekleniyor</span>
+                <span>Degerlendirme bekleniyor</span>
               )}
             </div>
           </div>
@@ -87,7 +87,7 @@ export function ProductCard({ product }: Props) {
               ) : null}
             </div>
             <span className="rounded-full border border-slate-200 px-3 py-2 text-[0.68rem] font-bold uppercase tracking-[0.2em] text-emerald-900">
-              Hazır sevk
+              Hazir sevk
             </span>
           </div>
         </div>

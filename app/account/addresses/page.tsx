@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Header } from "@/components/storefront/header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +9,12 @@ import {
   deleteAddressAction,
   updateAddressAction
 } from "@/lib/actions/address-actions";
+
+const accountTabs = [
+  { href: "/account/addresses", label: "Adresler" },
+  { href: "/account/wishlist", label: "Favoriler" },
+  { href: "/account/password", label: "Sifre" }
+] as const;
 
 export default async function AddressesPage() {
   const user = await requireUser();
@@ -29,6 +36,22 @@ export default async function AddressesPage() {
           </div>
         </div>
 
+        <nav className="mt-8 flex flex-wrap gap-3">
+          {accountTabs.map((tab) => (
+            <Link
+              key={tab.href}
+              href={tab.href}
+              className={`rounded-full px-4 py-2 text-sm font-bold transition ${
+                tab.href === "/account/addresses"
+                  ? "bg-slate-950 text-white"
+                  : "border border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:text-emerald-800"
+              }`}
+            >
+              {tab.label}
+            </Link>
+          ))}
+        </nav>
+
         <section className="mt-8 rounded-3xl bg-white p-6 shadow-sm">
           <h2 className="text-xl font-black">Yeni adres ekle</h2>
           <AddressForm action={createAddressAction} submitLabel="Adresi kaydet" />
@@ -37,8 +60,8 @@ export default async function AddressesPage() {
         <section className="mt-8 grid gap-4">
           {addresses.length === 0 ? (
             <div className="rounded-3xl bg-amber-50 p-6 text-amber-900">
-              Henuz kayitli adresin yok. Ilk adresini ekledikten sonra checkout
-              akisinda secerek kullanabilirsin.
+              Henuz kayitli adresin yok. Ilk adresini ekledikten sonra checkout akisinda secerek
+              kullanabilirsin.
             </div>
           ) : (
             addresses.map((address: AddressRecord) => (

@@ -8,6 +8,12 @@ import { getEffectiveUnitPrice } from "@/lib/commerce";
 import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/utils";
 
+const accountTabs = [
+  { href: "/account/addresses", label: "Adresler" },
+  { href: "/account/wishlist", label: "Favoriler" },
+  { href: "/account/password", label: "Sifre" }
+] as const;
+
 export default async function WishlistPage() {
   const user = await getCurrentUser();
 
@@ -58,6 +64,22 @@ export default async function WishlistPage() {
             Kataloga don
           </Link>
         </div>
+
+        <nav className="mt-8 flex flex-wrap gap-3">
+          {accountTabs.map((tab) => (
+            <Link
+              key={tab.href}
+              href={tab.href}
+              className={`rounded-full px-4 py-2 text-sm font-bold transition ${
+                tab.href === "/account/wishlist"
+                  ? "bg-slate-950 text-white"
+                  : "border border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:text-emerald-800"
+              }`}
+            >
+              {tab.label}
+            </Link>
+          ))}
+        </nav>
 
         <section className="mt-8 grid gap-4">
           {wishlistItems.length > 0 ? (

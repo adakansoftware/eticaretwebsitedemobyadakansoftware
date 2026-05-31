@@ -5,9 +5,10 @@ import { redirect } from "next/navigation";
 import { actionError, actionSuccess, type ActionResult } from "@/lib/action-response";
 import { sendPasswordResetEmail } from "@/lib/emails/password-reset";
 import { prisma } from "@/lib/prisma";
-import { createSession, hashPassword, verifyPassword, clearSession } from "@/lib/auth";
+import { createSession, hashPassword, verifyPassword, clearSession, requireUser } from "@/lib/auth";
 import { enforceRateLimit, getRequestFingerprint } from "@/lib/rate-limit";
 import {
+  changePasswordSchema,
   forgotPasswordSchema,
   loginSchema,
   registerSchema,
@@ -199,4 +200,61 @@ export async function resetPasswordAction(
   });
 
   return actionSuccess(undefined, "Sifren basariyla guncellendi. Simdi giris yapabilirsin.");
+}
+
+export async function changePasswordAction(
+  _state: ActionResult | null,
+  formData: FormData
+): Promise<ActionResult> {
+  const user = await requireUser();
+  const parsed = changePasswordSchema.safeParse(Object.fromEntries(formData));
+
+  if (!parsed.success) {
+    const firstIssue = parsed.error.issues[0];
+    return actionError(firstIssue?.message ?? "Sifre degistirme formu gecersiz");
+  }
+
+  const fingerprint = await getRequestFingerprint();
+
+  try {
+    await enforceRateLimit({
+      scope: "auth:change-password",
+      key: `${user.id}|${fingerprint}`,
+      limit: 5,
+      windowMs: 15 * 60 * 1000,
+      message: "Cok fazla sifre degistirme denemesi yapildi. Lutfen daha sonra tekrar deneyin."
+    });
+  } catch (error) {
+    return actionError(
+      error instanceof Error
+        ? error.message
+        : "Cok fazla sifre degistirme denemesi yapildi. Lutfen daha sonra tekrar deneyin."
+    );
+  }
+
+  const fullUser = await prisma.user.findUnique({
+    where: { id: user.id }
+  });
+
+  if (!fullUser) {
+    return actionError("Kullanici hesabi bulunamadi.");
+  }
+
+  const isCurrentPasswordValid = await verifyPassword(
+    parsed.data.currentPassword,
+    fullUser.passwordHash
+  );
+
+  if (!isCurrentPasswordValid) {
+    return actionError("Mevcut sifren hatali.");
+  }
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      passwordHash: await hashPassword(parsed.data.newPassword)
+    }
+  });
+
+  return actionSuccess(undefined, "Sifren basariyla guncellendi.");
 }

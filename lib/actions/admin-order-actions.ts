@@ -4,8 +4,11 @@ import { revalidatePath } from "next/cache";
 import { createAdminAuditLog } from "@/lib/admin-audit";
 import { actionError, actionSuccess, type ActionResult } from "@/lib/action-response";
 import { requireAdmin } from "@/lib/auth";
+import { sendOrderStatusUpdateEmail } from "@/lib/emails/order-status-update";
+import { env } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
 import { enforceRateLimit } from "@/lib/rate-limit";
+import { getSiteSettings } from "@/lib/site-settings";
 import { orderAdminSchema } from "@/lib/validators";
 
 const blockedRollbackStatuses = new Set(["CANCELLED", "REFUNDED"]);
@@ -43,7 +46,7 @@ export async function updateAdminOrderAction(formData: FormData) {
 
   const order = await prisma.order.findUnique({
     where: { id: parsed.data.orderId },
-    include: { payment: true, items: true }
+    include: { payment: true, items: true, user: true }
   });
 
   if (!order) throw new Error("Siparis bulunamadi");
@@ -124,6 +127,33 @@ export async function updateAdminOrderAction(formData: FormData) {
     }
   });
   revalidateOrderPaths(parsed.data.orderId);
+
+  const shouldSendStatusEmail =
+    order.status !== parsed.data.status ||
+    (parsed.data.trackingNumber ?? null) !== (order.trackingNumber ?? null) ||
+    (parsed.data.trackingCarrier ?? null) !== (order.trackingCarrier ?? null);
+
+  const recipientEmail = order.user?.email ?? order.guestEmail;
+  const recipientName = order.user?.name ?? order.guestName ?? order.shippingFullName;
+  if (shouldSendStatusEmail && recipientEmail) {
+    try {
+      const settings = await getSiteSettings();
+      await sendOrderStatusUpdateEmail({
+        email: recipientEmail,
+        customerName: recipientName,
+        orderNumber: order.orderNumber,
+        status: parsed.data.status,
+        trackingNumber: parsed.data.trackingNumber ?? null,
+        trackingCarrier: parsed.data.trackingCarrier ?? null,
+        siteName: settings?.siteName ?? "Adakan Commerce"
+      });
+    } catch (error) {
+      console.error("Siparis durum e-postasi gonderilemedi", {
+        orderId: order.id,
+        error
+      });
+    }
+  }
 }
 
 export async function confirmManualPaymentAction(formData: FormData) {

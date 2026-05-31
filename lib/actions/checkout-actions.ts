@@ -1,12 +1,16 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { sendAdminNewOrderEmail } from "@/lib/emails/admin-new-order";
+import { sendOrderConfirmationEmail } from "@/lib/emails/order-confirmation";
+import { env } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
 import { getCart, calculateCartTotals } from "@/lib/cart";
 import { getCurrentUser } from "@/lib/auth";
 import { checkoutSchema } from "@/lib/validators";
 import { getVariantUnitPrice } from "@/lib/commerce";
 import { createGuestOrderAccessToken } from "@/lib/order-access";
+import { getSiteSettings } from "@/lib/site-settings";
 
 export async function checkoutAction(formData: FormData) {
   const user = await getCurrentUser();
@@ -200,6 +204,63 @@ export async function checkoutAction(formData: FormData) {
     await tx.cartItem.deleteMany({ where: { cartId: fullCart.id } });
     return created;
   });
+
+  const settings = await getSiteSettings();
+  const customerEmail = user?.email ?? shippingSnapshot.guestEmail ?? null;
+  const customerName = user?.name ?? shippingSnapshot.guestName ?? shippingSnapshot.shippingFullName;
+  const lineItems = fullCart.items.map((item) => ({
+    name: `${item.product.name}${item.variant ? ` (${item.variant.name}: ${item.variant.value})` : ""}`,
+    quantity: item.quantity,
+    unitPrice: getVariantUnitPrice(item.product, item.variant),
+    lineTotal: getVariantUnitPrice(item.product, item.variant) * item.quantity
+  }));
+
+  if (customerEmail) {
+    try {
+      await sendOrderConfirmationEmail({
+        email: customerEmail,
+        customerName,
+        orderNumber: order.orderNumber,
+        items: lineItems,
+        subtotal: totals.subtotal,
+        discountTotal: totals.discountTotal,
+        shippingTotal: totals.shippingTotal,
+        grandTotal: totals.grandTotal,
+        shippingFullName: shippingSnapshot.shippingFullName,
+        shippingPhone: shippingSnapshot.shippingPhone,
+        shippingCity: shippingSnapshot.shippingCity,
+        shippingDistrict: shippingSnapshot.shippingDistrict,
+        shippingAddress: shippingSnapshot.shippingAddress,
+        paymentMethod: parsed.data.paymentMethod,
+        bankAccountInfo: settings?.bankAccountInfo,
+        siteName: settings?.siteName ?? "Adakan Commerce"
+      });
+    } catch (error) {
+      console.error("Siparis onay e-postasi gonderilemedi", {
+        orderId: order.id,
+        error
+      });
+    }
+  }
+
+  if (settings?.email) {
+    try {
+      await sendAdminNewOrderEmail({
+        email: settings.email,
+        orderNumber: order.orderNumber,
+        customerName,
+        grandTotal: totals.grandTotal,
+        paymentMethod: parsed.data.paymentMethod,
+        siteName: settings.siteName,
+        adminOrderUrl: `${env.NEXT_PUBLIC_SITE_URL}/admin/orders/${order.id}`
+      });
+    } catch (error) {
+      console.error("Admin yeni siparis e-postasi gonderilemedi", {
+        orderId: order.id,
+        error
+      });
+    }
+  }
 
   if (order.userId) {
     redirect(`/orders/${order.id}/success`);

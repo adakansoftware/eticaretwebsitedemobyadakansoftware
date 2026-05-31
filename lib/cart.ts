@@ -100,6 +100,11 @@ export async function getOrCreateCart(): Promise<CartWithItems> {
   return findOrCreateCart({ sessionId });
 }
 
+export async function getCartItemCount() {
+  const cart = await getCart();
+  return cart.items.reduce((sum, item) => sum + item.quantity, 0);
+}
+
 export async function calculateCartTotals(cartId?: string, couponCode?: string) {
   if (!cartId) {
     return {

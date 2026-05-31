@@ -1,10 +1,15 @@
 import Link from "next/link";
 import { ShoppingBag, UserRound } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
+import { getCartItemCount } from "@/lib/cart";
 import { getSiteSettings } from "@/lib/site-settings";
 
 export async function Header() {
-  const [user, settings] = await Promise.all([getCurrentUser(), getSiteSettings()]);
+  const [user, settings, cartItemCount] = await Promise.all([
+    getCurrentUser(),
+    getSiteSettings(),
+    getCartItemCount()
+  ]);
 
   const siteName = settings?.siteName || "Adakan Commerce";
 
@@ -68,9 +73,14 @@ export async function Header() {
           <Link
             href="/cart"
             aria-label="Sepet"
-            className="grid h-11 w-11 place-items-center rounded-full bg-emerald-900 text-white shadow-lg shadow-emerald-950/15 transition hover:-translate-y-0.5 hover:bg-emerald-800"
+            className="relative grid h-11 w-11 place-items-center rounded-full bg-emerald-900 text-white shadow-lg shadow-emerald-950/15 transition hover:-translate-y-0.5 hover:bg-emerald-800"
           >
             <ShoppingBag className="h-5 w-5" />
+            {cartItemCount > 0 ? (
+              <span className="absolute -right-1 -top-1 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-amber-500 px-1 text-[0.65rem] font-black leading-none text-slate-950">
+                {cartItemCount > 99 ? "99+" : cartItemCount}
+              </span>
+            ) : null}
           </Link>
         </div>
       </div>
