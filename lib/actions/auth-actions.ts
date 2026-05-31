@@ -47,6 +47,18 @@ export async function registerAction(formData: FormData) {
   redirect("/");
 }
 
+export async function registerFormAction(
+  _state: ActionResult | null,
+  formData: FormData
+): Promise<ActionResult> {
+  try {
+    await registerAction(formData);
+    return actionSuccess(undefined);
+  } catch (error) {
+    return actionError(error instanceof Error ? error.message : "Kayit islemi tamamlanamadi.");
+  }
+}
+
 async function authenticateUser(formData: FormData, scope: "customer" | "admin") {
   const parsed = loginSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
@@ -84,10 +96,38 @@ export async function customerLoginAction(formData: FormData) {
   redirect("/");
 }
 
+export async function customerLoginFormAction(
+  _state: ActionResult | null,
+  formData: FormData
+): Promise<ActionResult> {
+  try {
+    await customerLoginAction(formData);
+    return actionSuccess(undefined);
+  } catch (error) {
+    return actionError(
+      error instanceof Error ? error.message : "Giris islemi tamamlanamadi."
+    );
+  }
+}
+
 export async function adminLoginAction(formData: FormData) {
   const user = await authenticateUser(formData, "admin");
   await createSession({ userId: user.id, email: user.email, role: user.role });
   redirect("/admin");
+}
+
+export async function adminLoginFormAction(
+  _state: ActionResult | null,
+  formData: FormData
+): Promise<ActionResult> {
+  try {
+    await adminLoginAction(formData);
+    return actionSuccess(undefined);
+  } catch (error) {
+    return actionError(
+      error instanceof Error ? error.message : "Admin girisi tamamlanamadi."
+    );
+  }
 }
 
 export async function logoutAction() {

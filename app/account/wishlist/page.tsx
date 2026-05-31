@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Header } from "@/components/storefront/header";
 import { Button } from "@/components/ui/button";
-import { getCurrentUser } from "@/lib/auth";
+import { requireUser } from "@/lib/auth";
 import { removeWishlistItemAction } from "@/lib/actions/wishlist-actions";
 import { getEffectiveUnitPrice } from "@/lib/commerce";
 import { prisma } from "@/lib/prisma";
@@ -15,26 +15,7 @@ const accountTabs = [
 ] as const;
 
 export default async function WishlistPage() {
-  const user = await getCurrentUser();
-
-  if (!user) {
-    return (
-      <>
-        <Header />
-        <main className="mx-auto max-w-4xl px-4 py-10">
-          <div className="rounded-[2rem] border border-slate-200 bg-white/85 p-8 text-center shadow-sm">
-            <h1 className="text-3xl font-black text-slate-950">Favorilerim</h1>
-            <p className="mt-3 text-slate-600">
-              Favori listeni gorebilmek ve urunleri sonra incelemek icin giris yapmalisin.
-            </p>
-            <Button asChild className="mt-6">
-              <Link href="/login">Giris yap</Link>
-            </Button>
-          </div>
-        </main>
-      </>
-    );
-  }
+  const user = await requireUser();
 
   const wishlistItems = await prisma.wishlistItem.findMany({
     where: { userId: user.id },
@@ -119,10 +100,12 @@ export default async function WishlistPage() {
                     <Button asChild variant="outline">
                       <Link href={`/products/${item.product.slug}`}>Urunu gor</Link>
                     </Button>
-                    <form action={async () => {
-                      "use server";
-                      await removeWishlistItemAction(item.id, item.product.slug);
-                    }}>
+                    <form
+                      action={async () => {
+                        "use server";
+                        await removeWishlistItemAction(item.id, item.product.slug);
+                      }}
+                    >
                       <Button variant="ghost">Favorilerden kaldir</Button>
                     </form>
                   </div>

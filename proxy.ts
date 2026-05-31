@@ -5,6 +5,7 @@ const publicAssetPattern = /\.(?:png|jpg|jpeg|gif|webp|svg|ico|css|js|map)$/i;
 
 function isBypassedPath(pathname: string) {
   return (
+    pathname.startsWith("/api") ||
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico" ||
     pathname === "/robots.txt" ||

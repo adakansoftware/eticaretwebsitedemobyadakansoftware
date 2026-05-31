@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { AuthActionForm } from "@/components/auth/auth-action-form";
 import { AuthShell } from "@/components/auth/auth-shell";
-import { Button } from "@/components/ui/button";
+import { AuthSubmitButton } from "@/components/auth/auth-submit-button";
 import { Input } from "@/components/ui/input";
+import { customerLoginFormAction } from "@/lib/actions/auth-actions";
 import { getCurrentUser } from "@/lib/auth";
-import { customerLoginAction } from "@/lib/actions/auth-actions";
 
 export default async function LoginPage() {
   const user = await getCurrentUser();
@@ -19,7 +20,7 @@ export default async function LoginPage() {
       title="Hesabina giris yap"
       description="Bu ekran sadece musteri hesaplari icin. Siparislerini, adreslerini ve favorilerini yonetmek icin buradan oturum ac."
       form={
-        <form action={customerLoginAction} className="space-y-6">
+        <AuthActionForm action={customerLoginFormAction} className="space-y-6">
           <div>
             <h2 className="text-3xl font-black tracking-tight text-slate-950">Giris yap</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">Musteri hesabinla devam et.</p>
@@ -28,9 +29,11 @@ export default async function LoginPage() {
           <div className="grid gap-4">
             <Input name="email" type="email" placeholder="E-posta" required />
             <Input name="password" type="password" placeholder="Sifre" required />
-            <Button className="h-11 rounded-full bg-slate-950 text-white hover:bg-slate-800">
-              Giris yap
-            </Button>
+            <AuthSubmitButton
+              className="h-11 rounded-full bg-slate-950 text-white hover:bg-slate-800"
+              idleLabel="Giris yap"
+              pendingLabel="Giris yapiliyor..."
+            />
           </div>
 
           <Link
@@ -46,7 +49,7 @@ export default async function LoginPage() {
               Musteri hesabi olustur
             </Link>
           </p>
-        </form>
+        </AuthActionForm>
       }
     />
   );

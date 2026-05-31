@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { AuthActionForm } from "@/components/auth/auth-action-form";
 import { AuthShell } from "@/components/auth/auth-shell";
-import { Button } from "@/components/ui/button";
+import { AuthSubmitButton } from "@/components/auth/auth-submit-button";
 import { Input } from "@/components/ui/input";
-import { adminLoginAction } from "@/lib/actions/auth-actions";
+import { adminLoginFormAction } from "@/lib/actions/auth-actions";
 import { getCurrentUser } from "@/lib/auth";
 
 export default async function AdminLoginPage() {
@@ -20,7 +21,7 @@ export default async function AdminLoginPage() {
   return (
     <AuthShell
       mode="login"
-      title="Admin girisini musteri akısından tamamen ayirdik"
+      title="Admin girisini musteri akisindan tamamen ayirdik"
       description="Bu alan sadece yonetim ekibi icin. Admin hesabinla oturum actiginda dogrudan operasyon paneline gecersin."
       navigation={
         <div className="grid gap-3 sm:grid-cols-3">
@@ -45,7 +46,7 @@ export default async function AdminLoginPage() {
         </div>
       }
       form={
-        <form action={adminLoginAction} className="space-y-6">
+        <AuthActionForm action={adminLoginFormAction} className="space-y-6">
           <div>
             <h2 className="text-3xl font-black tracking-tight text-slate-950">Admin girisi</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
@@ -57,9 +58,11 @@ export default async function AdminLoginPage() {
           <div className="grid gap-4">
             <Input name="email" type="email" placeholder="Admin e-postasi" required />
             <Input name="password" type="password" placeholder="Sifre" required />
-            <Button className="h-11 rounded-full bg-slate-950 text-white hover:bg-slate-800">
-              Admin olarak gir
-            </Button>
+            <AuthSubmitButton
+              className="h-11 rounded-full bg-slate-950 text-white hover:bg-slate-800"
+              idleLabel="Admin olarak gir"
+              pendingLabel="Admin girisi yapiliyor..."
+            />
           </div>
 
           <div className="rounded-[1.4rem] border border-sky-200 bg-sky-50 p-4 text-sm text-sky-950">
@@ -72,7 +75,7 @@ export default async function AdminLoginPage() {
               don.
             </p>
           </div>
-        </form>
+        </AuthActionForm>
       }
     />
   );
