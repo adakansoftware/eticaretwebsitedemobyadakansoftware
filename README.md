@@ -15,6 +15,7 @@ This repository is no longer a storefront-only demo. It is structured as a produ
 - Transaction-safe notification outbox and worker processing
 - Unified `verify` pipeline
 - Behavior tests plus Playwright E2E coverage
+- Integration-style outbox worker tests
 - Report-only CSP and stronger security headers ready for production rollout
 - Local-or-S3-compatible upload storage abstraction
 
@@ -44,6 +45,7 @@ npm run dev
 npm run lint
 npm run typecheck
 npm run test
+npm run test:integration
 npm run build
 npm run verify
 npm run e2e
@@ -51,6 +53,7 @@ npm run ops:preflight
 npm run ops:assert
 npm run ops:report
 npm run ops:outbox
+npm run ops:outbox:requeue:dry
 npm run ops:cleanup:dry
 ```
 

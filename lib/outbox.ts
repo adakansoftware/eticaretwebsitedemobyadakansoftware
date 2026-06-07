@@ -7,7 +7,7 @@ import { sendPasswordResetEmail } from "@/lib/emails/password-reset";
 import { logError } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 import { getSiteSettings } from "@/lib/site-settings";
-import { buildNextOutboxAvailability } from "@/lib/outbox-core";
+import { processOutboxBatch } from "@/lib/outbox-worker-core";
 
 type DbClient = Prisma.TransactionClient | typeof prisma;
 
@@ -192,83 +192,72 @@ async function processOutboxEvent(event: {
 }
 
 export async function processPendingOutboxEvents(limit = env.OUTBOX_BATCH_SIZE) {
-  const now = new Date();
-  const events = await prisma.outboxEvent.findMany({
-    where: {
-      status: { in: [OutboxStatus.PENDING, OutboxStatus.FAILED] },
-      availableAt: { lte: now },
-      attempts: { lt: env.OUTBOX_MAX_ATTEMPTS }
-    },
-    orderBy: [{ createdAt: "asc" }],
-    take: limit
-  });
-
-  let sent = 0;
-  let failed = 0;
-  let skipped = 0;
-
-  for (const event of events) {
-    const claimTime = new Date();
-    const claimed = await prisma.outboxEvent.updateMany({
-      where: {
-        id: event.id,
-        status: { in: [OutboxStatus.PENDING, OutboxStatus.FAILED] }
+  return processOutboxBatch(
+    {
+      async listProcessableEvents(now, batchLimit) {
+        return prisma.outboxEvent.findMany({
+          where: {
+            status: { in: [OutboxStatus.PENDING, OutboxStatus.FAILED] },
+            availableAt: { lte: now },
+            attempts: { lt: env.OUTBOX_MAX_ATTEMPTS }
+          },
+          orderBy: [{ createdAt: "asc" }],
+          take: batchLimit
+        });
       },
-      data: {
-        status: OutboxStatus.PROCESSING,
-        attempts: { increment: 1 },
-        lastAttemptAt: claimTime,
-        lastError: null
+      async claimEvent(eventId, claimTime) {
+        const claimed = await prisma.outboxEvent.updateMany({
+          where: {
+            id: eventId,
+            status: { in: [OutboxStatus.PENDING, OutboxStatus.FAILED] }
+          },
+          data: {
+            status: OutboxStatus.PROCESSING,
+            attempts: { increment: 1 },
+            lastAttemptAt: claimTime,
+            lastError: null
+          }
+        });
+
+        return claimed.count > 0;
+      },
+      async markSent(eventId, processedAt, options) {
+        await prisma.outboxEvent.update({
+          where: { id: eventId },
+          data: {
+            status: OutboxStatus.SENT,
+            processedAt,
+            lastError: options?.skippedReason ? `skipped:${options.skippedReason}` : null
+          }
+        });
+      },
+      async markFailed(eventId, options) {
+        await prisma.outboxEvent.update({
+          where: { id: eventId },
+          data: {
+            status: OutboxStatus.FAILED,
+            availableAt: options.availableAt,
+            lastError: options.lastError
+          }
+        });
       }
-    });
-
-    if (claimed.count === 0) {
-      continue;
-    }
-
-    try {
-      const result = await processOutboxEvent(event);
-
-      if (result.skipped) {
-        skipped += 1;
-      } else {
-        sent += 1;
+    },
+    async (event) => {
+      try {
+        return await processOutboxEvent(event as { id: string; type: string; payload: Prisma.JsonValue });
+      } catch (error) {
+        await logError("outbox.event_failed", error, {
+          outboxEventId: event.id,
+          type: event.type,
+          attempts: event.attempts + 1
+        });
+        throw error;
       }
-
-      await prisma.outboxEvent.update({
-        where: { id: event.id },
-        data: {
-          status: OutboxStatus.SENT,
-          processedAt: new Date(),
-          lastError: result.skipped ? `skipped:${result.reason}` : null
-        }
-      });
-    } catch (error) {
-      failed += 1;
-      const attempts = event.attempts + 1;
-      const nextAttemptAt = buildNextOutboxAvailability(claimTime, env.OUTBOX_RETRY_MINUTES, attempts);
-
-      await prisma.outboxEvent.update({
-        where: { id: event.id },
-        data: {
-          status: OutboxStatus.FAILED,
-          availableAt: nextAttemptAt,
-          lastError: error instanceof Error ? error.message : "Unknown outbox error"
-        }
-      });
-
-      await logError("outbox.event_failed", error, {
-        outboxEventId: event.id,
-        type: event.type,
-        attempts
-      });
+    },
+    {
+      limit,
+      maxAttempts: env.OUTBOX_MAX_ATTEMPTS,
+      retryMinutes: env.OUTBOX_RETRY_MINUTES
     }
-  }
-
-  return {
-    processed: events.length,
-    sent,
-    failed,
-    skipped
-  };
+  );
 }

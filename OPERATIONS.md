@@ -49,7 +49,11 @@ Outbox worker:
 
 ```powershell
 npm run ops:outbox
+npm run ops:outbox:requeue:dry
+npm run ops:outbox:requeue:apply
 ```
+
+Use the requeue commands only for dead-letter or stuck processing events after the root cause has been investigated.
 
 Backup and restore drill:
 
@@ -139,3 +143,4 @@ Cleanup covers:
 - for abuse spikes, inspect `ActionRateLimit` by scope
 - for CSP rollout, review report-only findings before moving to enforced mode
 - for object storage rollout, validate `UPLOAD_PUBLIC_BASE_URL` and external image host allowlist together
+- for mail delivery incidents, inspect dead or stale `OutboxEvent` rows and use the outbox requeue dry-run before applying recovery

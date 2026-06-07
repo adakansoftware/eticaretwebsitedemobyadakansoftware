@@ -21,6 +21,7 @@ jobs:
       - run: npm ci
       - run: npx prisma generate
       - run: npm run ops:outbox | tee ops-outbox.json
+      - run: npm run ops:outbox:requeue:dry | tee ops-outbox-requeue-dry.json
       - run: npm run ops:assert | tee ops-assert.json
       - run: npm run ops:report | tee ops-report.json
       - run: npm run ops:orders:anomalies | tee ops-order-anomalies.json
@@ -33,6 +34,7 @@ jobs:
           path: |
             ops-assert.json
             ops-outbox.json
+            ops-outbox-requeue-dry.json
             ops-report.json
             ops-order-anomalies.json
             ops-order-timeouts.json
