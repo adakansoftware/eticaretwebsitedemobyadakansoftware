@@ -20,6 +20,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx prisma generate
+      - run: npm run ops:outbox | tee ops-outbox.json
       - run: npm run ops:assert | tee ops-assert.json
       - run: npm run ops:report | tee ops-report.json
       - run: npm run ops:orders:anomalies | tee ops-order-anomalies.json
@@ -31,6 +32,7 @@ jobs:
           name: ops-reports
           path: |
             ops-assert.json
+            ops-outbox.json
             ops-report.json
             ops-order-anomalies.json
             ops-order-timeouts.json

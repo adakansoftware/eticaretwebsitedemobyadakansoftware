@@ -11,6 +11,7 @@ import { redactLogValue } from "../lib/log-redaction.ts";
 import { detectOrderAnomalies } from "../lib/order-anomalies-core.ts";
 import { detectTimedOutWaitingPaymentOrders } from "../lib/order-timeout-core.ts";
 import { summarizeOpsStatus } from "../lib/ops-core.ts";
+import { buildNextOutboxAvailability } from "../lib/outbox-core.ts";
 import { buildAdditionalSecurityHeaders } from "../lib/security-headers.ts";
 import { createSlug } from "../lib/slug.ts";
 import { MAX_FILE_SIZE, MAX_UPLOAD_REQUEST_SIZE, detectUploadExtension } from "../lib/upload.ts";
@@ -248,6 +249,8 @@ async function main() {
         const summary = summarizeOpsStatus({
           lowStockProducts: 2,
           stuckOrders: 1,
+          staleOutboxEvents: 1,
+          deadOutboxEvents: 1,
           recentRateLimitBlocks: 3,
           rateLimitAlertThreshold: 2,
           expiredPasswordResetTokens: 0,
@@ -259,6 +262,8 @@ async function main() {
         assert.equal(summary.ok, false);
         assert.equal(summary.signals.find((signal) => signal.name === "low_stock")?.ok, false);
         assert.equal(summary.signals.find((signal) => signal.name === "stuck_orders")?.ok, false);
+        assert.equal(summary.signals.find((signal) => signal.name === "stale_outbox_events")?.ok, false);
+        assert.equal(summary.signals.find((signal) => signal.name === "dead_outbox_events")?.ok, false);
         assert.equal(summary.signals.find((signal) => signal.name === "rate_limit_blocks")?.ok, false);
       }
     },
@@ -416,6 +421,16 @@ async function main() {
       name: "upload limits keep request envelope above file size cap",
       run: () => {
         assert.equal(MAX_UPLOAD_REQUEST_SIZE > MAX_FILE_SIZE, true);
+      }
+    },
+    {
+      name: "outbox retry backoff grows with attempts",
+      run: () => {
+        const base = new Date("2026-06-07T10:00:00.000Z");
+        const secondAttempt = buildNextOutboxAvailability(base, 10, 1);
+        const thirdAttempt = buildNextOutboxAvailability(base, 10, 3);
+        assert.equal(secondAttempt.toISOString(), "2026-06-07T10:10:00.000Z");
+        assert.equal(thirdAttempt.toISOString(), "2026-06-07T10:30:00.000Z");
       }
     }
   ];

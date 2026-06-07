@@ -44,6 +44,12 @@ Combined incident snapshot:
 npm run ops:report
 ```
 
+Outbox worker:
+
+```powershell
+npm run ops:outbox
+```
+
 Backup and restore drill:
 
 ```powershell
@@ -55,6 +61,8 @@ The summary reports:
 
 - low-stock active product count
 - orders open longer than expected
+- stale outbox events
+- dead-letter outbox events
 - recent rate-limit block count
 - expired password reset tokens
 - stale replay guard records
@@ -114,6 +122,7 @@ Cleanup covers:
 - expired rate-limit rows
 - expired replay guard rows
 - stale password reset tokens
+- old sent or failed outbox rows
 
 ## Backup and restore
 

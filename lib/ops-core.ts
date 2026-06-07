@@ -1,6 +1,8 @@
 export type OpsStatusInput = {
   lowStockProducts: number;
   stuckOrders: number;
+  staleOutboxEvents: number;
+  deadOutboxEvents: number;
   recentRateLimitBlocks: number;
   rateLimitAlertThreshold: number;
   expiredPasswordResetTokens: number;
@@ -31,6 +33,22 @@ export function summarizeOpsStatus(input: OpsStatusInput) {
       detail:
         input.stuckOrders > 0
           ? `${input.stuckOrders} siparis beklenen sureden uzun suredir ilerlemiyor`
+          : undefined
+    },
+    {
+      name: "stale_outbox_events",
+      ok: input.staleOutboxEvents === 0,
+      detail:
+        input.staleOutboxEvents > 0
+          ? `${input.staleOutboxEvents} outbox olayi beklenenden uzun suredir islenmedi`
+          : undefined
+    },
+    {
+      name: "dead_outbox_events",
+      ok: input.deadOutboxEvents === 0,
+      detail:
+        input.deadOutboxEvents > 0
+          ? `${input.deadOutboxEvents} outbox olayi maksimum deneme sayisina ulasti`
           : undefined
     },
     {

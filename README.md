@@ -12,6 +12,7 @@ This repository is no longer a storefront-only demo. It is structured as a produ
 - Admin audit trail with request-id correlation
 - `live`, `ready`, and admin-gated `ops` health endpoints
 - Cleanup, anomaly, timeout, preflight, and assert operational scripts
+- Transaction-safe notification outbox and worker processing
 - Unified `verify` pipeline
 - Behavior tests plus Playwright E2E coverage
 - Report-only CSP and stronger security headers ready for production rollout
@@ -48,6 +49,7 @@ npm run e2e
 npm run ops:preflight
 npm run ops:assert
 npm run ops:report
+npm run ops:outbox
 npm run ops:cleanup:dry
 ```
 

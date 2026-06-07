@@ -8,6 +8,7 @@ type CleanupPlan = {
   rateLimits: number;
   replayGuards: number;
   passwordResetTokens: number;
+  outboxEvents: number;
 };
 
 function hasFlag(flag: string) {
@@ -25,8 +26,9 @@ async function buildPlan(now: Date): Promise<CleanupPlan> {
   const passwordResetBefore = new Date(
     now.getTime() - env.PASSWORD_RESET_RETENTION_HOURS * 60 * 60 * 1000
   );
+  const outboxBefore = new Date(now.getTime() - env.OUTBOX_RETENTION_DAYS * 24 * 60 * 60 * 1000);
 
-  const [auditLogs, rateLimits, replayGuards, passwordResetTokens] = await Promise.all([
+  const [auditLogs, rateLimits, replayGuards, passwordResetTokens, outboxEvents] = await Promise.all([
     prisma.adminAuditLog.count({ where: { createdAt: { lt: auditBefore } } }),
     prisma.actionRateLimit.count({
       where: {
@@ -42,10 +44,16 @@ async function buildPlan(now: Date): Promise<CleanupPlan> {
       where: {
         OR: [{ expiresAt: { lt: now } }, { createdAt: { lt: passwordResetBefore } }]
       }
+    }),
+    prisma.outboxEvent.count({
+      where: {
+        status: { in: ["SENT", "FAILED"] },
+        updatedAt: { lt: outboxBefore }
+      }
     })
   ]);
 
-  return { auditLogs, rateLimits, replayGuards, passwordResetTokens };
+  return { auditLogs, rateLimits, replayGuards, passwordResetTokens, outboxEvents };
 }
 
 async function applyPlan(now: Date) {
@@ -59,6 +67,7 @@ async function applyPlan(now: Date) {
   const passwordResetBefore = new Date(
     now.getTime() - env.PASSWORD_RESET_RETENTION_HOURS * 60 * 60 * 1000
   );
+  const outboxBefore = new Date(now.getTime() - env.OUTBOX_RETENTION_DAYS * 24 * 60 * 60 * 1000);
 
   await prisma.$transaction([
     prisma.adminAuditLog.deleteMany({ where: { createdAt: { lt: auditBefore } } }),
@@ -75,6 +84,12 @@ async function applyPlan(now: Date) {
     prisma.passwordResetToken.deleteMany({
       where: {
         OR: [{ expiresAt: { lt: now } }, { createdAt: { lt: passwordResetBefore } }]
+      }
+    }),
+    prisma.outboxEvent.deleteMany({
+      where: {
+        status: { in: ["SENT", "FAILED"] },
+        updatedAt: { lt: outboxBefore }
       }
     })
   ]);

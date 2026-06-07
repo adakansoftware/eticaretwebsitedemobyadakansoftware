@@ -50,6 +50,13 @@ enum ReviewStatus {
   REJECTED
 }
 
+enum OutboxStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+}
+
 model User {
   id             String         @id @default(cuid())
   name           String
@@ -447,4 +454,20 @@ model OperationReplayGuard {
 
   @@unique([scope, key])
   @@index([expiresAt])
+}
+
+model OutboxEvent {
+  id            String       @id @default(cuid())
+  type          String
+  payload       Json
+  status        OutboxStatus @default(PENDING)
+  attempts      Int          @default(0)
+  availableAt   DateTime     @default(now())
+  lastAttemptAt DateTime?
+  processedAt   DateTime?
+  lastError     String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([status, availableAt, createdAt])
 }

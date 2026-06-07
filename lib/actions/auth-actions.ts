@@ -4,7 +4,7 @@ import { randomBytes } from "node:crypto";
 import { redirect } from "next/navigation";
 import { actionError, actionSuccess, type ActionResult } from "@/lib/action-response";
 import { mergeSessionCartIntoUserCart } from "@/lib/cart";
-import { sendPasswordResetEmail } from "@/lib/emails/password-reset";
+import { outboxEventTypes, enqueueOutboxEvent } from "@/lib/outbox";
 import { prisma } from "@/lib/prisma";
 import { createSession, hashPassword, verifyPassword, clearSession, requireUser } from "@/lib/auth";
 import { logError } from "@/lib/logger";
@@ -196,25 +196,20 @@ export async function forgotPasswordAction(
     const token = randomBytes(32).toString("hex");
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
 
-    await prisma.passwordResetToken.create({
-      data: {
-        userId: user.id,
-        token,
-        expiresAt
-      }
-    });
+    await prisma.$transaction(async (tx) => {
+      await tx.passwordResetToken.create({
+        data: {
+          userId: user.id,
+          token,
+          expiresAt
+        }
+      });
 
-    try {
-      await sendPasswordResetEmail({
-        email: user.email,
-        name: user.name,
+      await enqueueOutboxEvent(tx, outboxEventTypes.passwordResetRequested, {
+        userId: user.id,
         token
       });
-    } catch (error) {
-      await logError("auth.password_reset_email_failed", error, {
-        userId: user.id
-      });
-    }
+    });
   }
 
   return actionSuccess(

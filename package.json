@@ -19,6 +19,7 @@
     "ops:status": "node --experimental-strip-types scripts/ops-status.mts",
     "ops:assert": "node --experimental-strip-types scripts/ops-assert.mts",
     "ops:report": "node --experimental-strip-types scripts/ops-report.mts",
+    "ops:outbox": "node --import tsx scripts/process-outbox.mts",
     "ops:orders:anomalies": "node --experimental-strip-types scripts/order-anomalies.mts",
     "ops:orders:timeout:dry": "node --experimental-strip-types scripts/order-timeouts.mts",
     "ops:orders:timeout:apply": "node --experimental-strip-types scripts/order-timeouts.mts --apply",

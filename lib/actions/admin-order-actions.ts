@@ -1,21 +1,20 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { OrderStatus } from "@prisma/client";
 import { createAdminAuditLog } from "@/lib/admin-audit";
 import { actionError, actionSuccess, type ActionResult } from "@/lib/action-response";
 import { requireAdmin } from "@/lib/auth";
-import { sendOrderStatusUpdateEmail } from "@/lib/emails/order-status-update";
-import { logError } from "@/lib/logger";
+import { outboxEventTypes, enqueueOutboxEvent } from "@/lib/outbox";
 import { prisma } from "@/lib/prisma";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { assertTrustedMutation } from "@/lib/security";
-import { getSiteSettings } from "@/lib/site-settings";
 import { orderAdminSchema } from "@/lib/validators";
 
-const blockedRollbackStatuses = new Set(["CANCELLED", "REFUNDED"]);
-const rollbackStatuses = new Set(["CANCELLED", "REFUNDED"]);
+const blockedRollbackStatuses = new Set<OrderStatus>(["CANCELLED", "REFUNDED"]);
+const rollbackStatuses = new Set<OrderStatus>(["CANCELLED", "REFUNDED"]);
 
-function ensureStatusTransition(currentStatus: string, nextStatus: string) {
+function ensureStatusTransition(currentStatus: OrderStatus, nextStatus: OrderStatus) {
   if (currentStatus === nextStatus) return;
   if (blockedRollbackStatuses.has(currentStatus)) {
     throw new Error("Iptal veya iade edilmis siparis farkli bir duruma geri alinamaz");
@@ -54,6 +53,11 @@ export async function updateAdminOrderAction(formData: FormData) {
   if (!order) throw new Error("Siparis bulunamadi");
 
   ensureStatusTransition(order.status, parsed.data.status);
+
+  const shouldSendStatusEmail =
+    order.status !== parsed.data.status ||
+    (parsed.data.trackingNumber ?? null) !== (order.trackingNumber ?? null) ||
+    (parsed.data.trackingCarrier ?? null) !== (order.trackingCarrier ?? null);
 
   await prisma.$transaction(async (tx) => {
     let inventoryRestoredAt = order.inventoryRestoredAt;
@@ -143,6 +147,12 @@ export async function updateAdminOrderAction(formData: FormData) {
         }
       });
     }
+
+    if (shouldSendStatusEmail && (order.user?.email ?? order.guestEmail)) {
+      await enqueueOutboxEvent(tx, outboxEventTypes.orderStatusUpdated, {
+        orderId: order.id
+      });
+    }
   });
 
   await createAdminAuditLog(
@@ -162,32 +172,6 @@ export async function updateAdminOrderAction(formData: FormData) {
   );
   revalidateOrderPaths(parsed.data.orderId);
 
-  const shouldSendStatusEmail =
-    order.status !== parsed.data.status ||
-    (parsed.data.trackingNumber ?? null) !== (order.trackingNumber ?? null) ||
-    (parsed.data.trackingCarrier ?? null) !== (order.trackingCarrier ?? null);
-
-  const recipientEmail = order.user?.email ?? order.guestEmail;
-  const recipientName = order.user?.name ?? order.guestName ?? order.shippingFullName;
-  if (shouldSendStatusEmail && recipientEmail) {
-    try {
-      const settings = await getSiteSettings();
-      await sendOrderStatusUpdateEmail({
-        email: recipientEmail,
-        customerName: recipientName,
-        orderNumber: order.orderNumber,
-        status: parsed.data.status,
-        trackingNumber: parsed.data.trackingNumber ?? null,
-        trackingCarrier: parsed.data.trackingCarrier ?? null,
-        siteName: settings?.siteName ?? "Adakan Commerce"
-      });
-    } catch (error) {
-      await logError("admin.order_status_email_failed", error, {
-        orderId: order.id,
-        recipientEmail
-      });
-    }
-  }
 }
 
 export async function confirmManualPaymentAction(formData: FormData) {

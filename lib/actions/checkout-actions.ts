@@ -7,15 +7,12 @@ import { getCurrentUser } from "@/lib/auth";
 import { getCart, calculateCartTotals } from "@/lib/cart";
 import { buildCheckoutReplayKey } from "@/lib/checkout-replay";
 import { getVariantUnitPrice } from "@/lib/commerce";
-import { sendAdminNewOrderEmail } from "@/lib/emails/admin-new-order";
-import { sendOrderConfirmationEmail } from "@/lib/emails/order-confirmation";
 import { env } from "@/lib/env";
-import { logError } from "@/lib/logger";
 import { createGuestOrderAccessToken } from "@/lib/order-access";
+import { outboxEventTypes, enqueueOutboxEvent } from "@/lib/outbox";
 import { prisma } from "@/lib/prisma";
 import { enforceRateLimit, getRequestFingerprint } from "@/lib/rate-limit";
 import { assertTrustedMutation } from "@/lib/security";
-import { getSiteSettings } from "@/lib/site-settings";
 import { checkoutSchema } from "@/lib/validators";
 
 export async function processCheckout(formData: FormData) {
@@ -328,6 +325,16 @@ export async function processCheckout(formData: FormData) {
       }
     });
 
+    if (user?.email ?? shippingSnapshot.guestEmail) {
+      await enqueueOutboxEvent(tx, outboxEventTypes.orderConfirmationRequested, {
+        orderId: created.id
+      });
+    }
+
+    await enqueueOutboxEvent(tx, outboxEventTypes.adminNewOrderRequested, {
+      orderId: created.id
+    });
+
     await tx.cart.update({
       where: { id: fullCart.id },
       data: { couponCode: null }
@@ -335,66 +342,6 @@ export async function processCheckout(formData: FormData) {
     await tx.cartItem.deleteMany({ where: { cartId: fullCart.id } });
     return created;
   });
-
-  const customerEmail = user?.email ?? shippingSnapshot.guestEmail ?? null;
-  const customerName = user?.name ?? shippingSnapshot.guestName ?? shippingSnapshot.shippingFullName;
-  const lineItems = fullCart.items.map((item) => ({
-    name: `${item.product.name}${item.variant ? ` (${item.variant.name}: ${item.variant.value})` : ""}`,
-    quantity: item.quantity,
-    unitPrice: getVariantUnitPrice(item.product, item.variant),
-    lineTotal: getVariantUnitPrice(item.product, item.variant) * item.quantity
-  }));
-
-  void (async () => {
-    const settings = await getSiteSettings();
-
-    if (customerEmail) {
-      try {
-        await sendOrderConfirmationEmail({
-          email: customerEmail,
-          customerName,
-          orderNumber: order.orderNumber,
-          items: lineItems,
-          subtotal: totals.subtotal,
-          discountTotal: totals.discountTotal,
-          shippingTotal: totals.shippingTotal,
-          grandTotal: totals.grandTotal,
-          shippingFullName: shippingSnapshot.shippingFullName,
-          shippingPhone: shippingSnapshot.shippingPhone,
-          shippingCity: shippingSnapshot.shippingCity,
-          shippingDistrict: shippingSnapshot.shippingDistrict,
-          shippingAddress: shippingSnapshot.shippingAddress,
-          paymentMethod: parsed.data.paymentMethod,
-          bankAccountInfo: settings?.bankAccountInfo,
-          siteName: settings?.siteName ?? "Adakan Commerce"
-        });
-      } catch (error) {
-        await logError("checkout.customer_email_failed", error, {
-          orderId: order.id,
-          customerEmail
-        });
-      }
-    }
-
-    if (settings?.email) {
-      try {
-        await sendAdminNewOrderEmail({
-          email: settings.email,
-          orderNumber: order.orderNumber,
-          customerName,
-          grandTotal: totals.grandTotal,
-          paymentMethod: parsed.data.paymentMethod,
-          siteName: settings.siteName,
-          adminOrderUrl: `${env.NEXT_PUBLIC_SITE_URL}/admin/orders/${order.id}`
-        });
-      } catch (error) {
-        await logError("checkout.admin_email_failed", error, {
-          orderId: order.id,
-          adminEmail: settings.email
-        });
-      }
-    }
-  })();
 
   if (order.userId) {
     return `/orders/${order.id}/success`;

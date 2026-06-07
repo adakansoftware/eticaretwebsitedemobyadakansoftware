@@ -1,4 +1,4 @@
-import { Role } from "@prisma/client";
+import { OutboxStatus, Role } from "@prisma/client";
 import { env } from "../lib/env.ts";
 import { summarizeOpsStatus } from "../lib/ops-core.ts";
 import { detectOrderAnomalies } from "../lib/order-anomalies-core.ts";
@@ -16,11 +16,14 @@ export async function buildOpsStatusSnapshot() {
   const replayBefore = new Date(
     now.getTime() - env.REPLAY_GUARD_RETENTION_HOURS * 60 * 60 * 1000
   );
+  const outboxBefore = new Date(now.getTime() - env.OUTBOX_STUCK_MINUTES * 60 * 1000);
   const rateLimitWindowStart = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
   const [
     lowStockProducts,
     stuckOrders,
+    staleOutboxEvents,
+    deadOutboxEvents,
     recentRateLimitBlocks,
     expiredPasswordResetTokens,
     staleReplayGuards,
@@ -66,6 +69,19 @@ export async function buildOpsStatusSnapshot() {
         ]
       }
     }),
+    prisma.outboxEvent.count({
+      where: {
+        status: { in: [OutboxStatus.PENDING, OutboxStatus.FAILED] },
+        availableAt: { lt: outboxBefore },
+        attempts: { lt: env.OUTBOX_MAX_ATTEMPTS }
+      }
+    }),
+    prisma.outboxEvent.count({
+      where: {
+        status: OutboxStatus.FAILED,
+        attempts: { gte: env.OUTBOX_MAX_ATTEMPTS }
+      }
+    }),
     prisma.actionRateLimit.aggregate({
       _sum: {
         blockedCount: true
@@ -96,6 +112,8 @@ export async function buildOpsStatusSnapshot() {
   const summary = summarizeOpsStatus({
     lowStockProducts,
     stuckOrders,
+    staleOutboxEvents,
+    deadOutboxEvents,
     recentRateLimitBlocks: recentRateLimitBlocks._sum.blockedCount ?? 0,
     rateLimitAlertThreshold: env.OPS_RATE_LIMIT_ALERT_COUNT,
     expiredPasswordResetTokens,
@@ -110,6 +128,8 @@ export async function buildOpsStatusSnapshot() {
     metrics: {
       lowStockProducts,
       stuckOrders,
+      staleOutboxEvents,
+      deadOutboxEvents,
       recentRateLimitBlocks: recentRateLimitBlocks._sum.blockedCount ?? 0,
       expiredPasswordResetTokens,
       staleReplayGuards,
@@ -119,6 +139,8 @@ export async function buildOpsStatusSnapshot() {
     thresholds: {
       lowStockAlertThreshold: env.LOW_STOCK_ALERT_THRESHOLD,
       stuckOrderMinutes: env.OPS_STUCK_ORDER_MINUTES,
+      outboxStuckMinutes: env.OUTBOX_STUCK_MINUTES,
+      outboxMaxAttempts: env.OUTBOX_MAX_ATTEMPTS,
       rateLimitAlertCount: env.OPS_RATE_LIMIT_ALERT_COUNT,
       waitingPaymentTimeoutHours: env.WAITING_PAYMENT_TIMEOUT_HOURS
     }
