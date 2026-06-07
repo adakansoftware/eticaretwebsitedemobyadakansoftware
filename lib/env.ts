@@ -48,6 +48,26 @@ const envSchema = z.object({
     });
   }
 
+  const sentryValues = [value.SENTRY_AUTH_TOKEN, value.SENTRY_ORG, value.SENTRY_PROJECT];
+  const configuredSentryReleaseFields = sentryValues.filter(Boolean).length;
+  if (
+    configuredSentryReleaseFields > 0 &&
+    configuredSentryReleaseFields < sentryValues.length
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["SENTRY_AUTH_TOKEN"],
+      message: "Sentry release ayarlari kismi degil, birlikte tanimlanmali"
+    });
+  }
+
+  if (value.BACKUP_DRILL_RESTORE_DATABASE_URL && !value.BACKUP_DRILL_DATABASE_URL) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["BACKUP_DRILL_DATABASE_URL"],
+      message: "Restore tatbikati icin kaynak backup veritabani da tanimlanmali"
+    });
+  }
 });
 
 export const env = envSchema.parse(process.env);

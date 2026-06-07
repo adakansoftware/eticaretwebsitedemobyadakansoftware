@@ -1,5 +1,6 @@
 "use server";
 
+import { OrderStatus, PaymentStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { createAdminAuditLog } from "@/lib/admin-audit";
 import { actionError, actionSuccess, type ActionResult } from "@/lib/action-response";
@@ -17,6 +18,9 @@ type ProductVariantInput = {
   stock: number;
   priceDiff: number;
 };
+
+const allowedOrderStatuses = new Set<string>(Object.values(OrderStatus));
+const allowedPaymentStatuses = new Set<string>(Object.values(PaymentStatus));
 
 function buildProductData(formData: FormData) {
   const parsed = productAdminSchema.safeParse({
@@ -97,19 +101,11 @@ export async function updateOrderStatusAction(formData: FormData) {
   const adminNote = String(formData.get("adminNote") ?? "");
   const paymentStatus = String(formData.get("paymentStatus") ?? "");
 
-  const allowedStatuses = [
-    "PENDING",
-    "WAITING_PAYMENT",
-    "PAID",
-    "PREPARING",
-    "SHIPPED",
-    "DELIVERED",
-    "CANCELLED",
-    "REFUNDED"
-  ];
-
   if (!orderId) throw new Error("Siparis bulunamadi");
-  if (!allowedStatuses.includes(status)) throw new Error("Gecersiz siparis durumu");
+  if (!allowedOrderStatuses.has(status)) throw new Error("Gecersiz siparis durumu");
+  if (paymentStatus && !allowedPaymentStatuses.has(paymentStatus)) {
+    throw new Error("Gecersiz odeme durumu");
+  }
 
   const admin = await requireAdmin();
   await enforceRateLimit({
@@ -123,14 +119,14 @@ export async function updateOrderStatusAction(formData: FormData) {
   await prisma.$transaction(async (tx) => {
     await tx.order.update({
       where: { id: orderId },
-      data: { status: status as any, adminNote: adminNote || null }
+      data: { status: status as OrderStatus, adminNote: adminNote || null }
     });
 
     if (paymentStatus) {
       await tx.payment.updateMany({
         where: { orderId },
         data: {
-          status: paymentStatus as any,
+          status: paymentStatus as PaymentStatus,
           confirmedAt: paymentStatus === "CONFIRMED" ? new Date() : null
         }
       });

@@ -3,12 +3,13 @@ import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { env } from "@/lib/env";
-
-const cookieName = "adakan_session";
-const secret = new TextEncoder().encode(env.AUTH_SECRET);
-const sessionIssuer = new URL(env.NEXT_PUBLIC_SITE_URL).origin;
-const sessionAudience = "adakan-commerce-core";
+import {
+  isSecureCookieEnvironment,
+  sessionAudience,
+  sessionCookieName,
+  sessionIssuer,
+  sessionSecret
+} from "@/lib/session-config";
 
 type SessionPayload = { userId: string; role: "USER" | "ADMIN"; email: string };
 
@@ -27,13 +28,13 @@ export async function createSession(payload: SessionPayload) {
     .setIssuer(sessionIssuer)
     .setAudience(sessionAudience)
     .setExpirationTime("7d")
-    .sign(secret);
+    .sign(sessionSecret);
 
   const cookieStore = await cookies();
-  cookieStore.set(cookieName, token, {
+  cookieStore.set(sessionCookieName, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: isSecureCookieEnvironment(),
     path: "/",
     maxAge: 60 * 60 * 24 * 7,
     priority: "high"
@@ -42,16 +43,16 @@ export async function createSession(payload: SessionPayload) {
 
 export async function clearSession() {
   const cookieStore = await cookies();
-  cookieStore.delete(cookieName);
+  cookieStore.delete(sessionCookieName);
 }
 
 export async function getSession(): Promise<SessionPayload | null> {
   const cookieStore = await cookies();
-  const token = cookieStore.get(cookieName)?.value;
+  const token = cookieStore.get(sessionCookieName)?.value;
   if (!token) return null;
 
   try {
-    const { payload } = await jwtVerify(token, secret, {
+    const { payload } = await jwtVerify(token, sessionSecret, {
       issuer: sessionIssuer,
       audience: sessionAudience
     });

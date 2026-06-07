@@ -86,6 +86,39 @@ async function main() {
       }
     },
     {
+      name: "trusted request accepts forwarded host fallback",
+      run: () => {
+        assert.equal(
+          isTrustedOriginRequest({
+            siteUrl: "https://shop.example.com",
+            configuredOrigins: buildTrustedOrigins("https://shop.example.com"),
+            origin: null,
+            referer: null,
+            host: "shop.example.com",
+            forwardedHost: "shop.example.com",
+            forwardedProto: "https"
+          }),
+          true
+        );
+      }
+    },
+    {
+      name: "trusted request rejects foreign origin despite local host",
+      run: () => {
+        assert.equal(
+          isTrustedOriginRequest({
+            siteUrl: "https://shop.example.com",
+            configuredOrigins: buildTrustedOrigins("https://shop.example.com"),
+            origin: "https://evil.example.com",
+            host: "shop.example.com",
+            forwardedHost: "shop.example.com",
+            forwardedProto: "https"
+          }),
+          false
+        );
+      }
+    },
+    {
       name: "checkout replay key is stable for equal payloads",
       run: () => {
         const first = buildCheckoutReplayKey({

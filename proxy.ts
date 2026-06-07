@@ -7,7 +7,13 @@ import {
   isTrustedOriginRequest,
   parseTrustedOrigins
 } from "@/lib/origin";
-import { createRequestId, requestIdHeaderName } from "@/lib/request-context";
+import {
+  createRequestId,
+  forwardedMethodHeaderName,
+  forwardedPathHeaderName,
+  requestIdHeaderName
+} from "@/lib/request-context";
+import { sessionAudience, sessionIssuer, sessionSecret } from "@/lib/session-config";
 
 const publicAssetPattern = /\.(?:png|jpg|jpeg|gif|webp|svg|ico|css|js|map)$/i;
 
@@ -23,12 +29,14 @@ function isBypassedPath(pathname: string) {
 }
 
 async function verifySessionToken(token: string) {
-  if (!process.env.AUTH_SECRET) return null;
-
   try {
     const { payload } = await jwtVerify(
       token,
-      new TextEncoder().encode(process.env.AUTH_SECRET)
+      sessionSecret,
+      {
+        issuer: sessionIssuer,
+        audience: sessionAudience
+      }
     );
 
     return payload;
@@ -41,8 +49,12 @@ export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const requestId = req.headers.get(requestIdHeaderName) ?? createRequestId();
   const isServerActionRequest = req.headers.has("next-action");
+  const forwardedHeaders = new Headers(req.headers);
+  forwardedHeaders.set(requestIdHeaderName, requestId);
+  forwardedHeaders.set(forwardedMethodHeaderName, req.method);
+  forwardedHeaders.set(forwardedPathHeaderName, req.nextUrl.pathname);
 
-  const withRequestId = (response: NextResponse) => {
+  const withSecurityHeaders = (response: NextResponse) => {
     if (isServerActionRequest) {
       return response;
     }
@@ -50,6 +62,8 @@ export async function proxy(req: NextRequest) {
     response.headers.set(requestIdHeaderName, requestId);
     response.headers.set("x-content-type-options", "nosniff");
     response.headers.set("x-frame-options", "DENY");
+    response.headers.set("cross-origin-opener-policy", "same-origin");
+    response.headers.set("cross-origin-resource-policy", "same-origin");
     response.headers.set("referrer-policy", "strict-origin-when-cross-origin");
     response.headers.set(
       "permissions-policy",
@@ -57,6 +71,15 @@ export async function proxy(req: NextRequest) {
     );
     return response;
   };
+
+  const next = () =>
+    withSecurityHeaders(
+      NextResponse.next({
+        request: {
+          headers: forwardedHeaders
+        }
+      })
+    );
 
   if (
     isMutatingMethod(req.method) &&
@@ -73,15 +96,15 @@ export async function proxy(req: NextRequest) {
       forwardedProto: req.headers.get("x-forwarded-proto")
     })
   ) {
-    return withRequestId(new NextResponse("Forbidden", { status: 403 }));
+    return withSecurityHeaders(new NextResponse("Forbidden", { status: 403 }));
   }
 
   if (isBypassedPath(pathname)) {
-    return withRequestId(NextResponse.next());
+    return next();
   }
 
   if (pathname === "/admin/login") {
-    return withRequestId(NextResponse.redirect(new URL("/admin-login", req.url)));
+    return withSecurityHeaders(NextResponse.redirect(new URL("/admin-login", req.url)));
   }
 
   const isAdminLoginPath = pathname === "/admin-login";
@@ -90,32 +113,32 @@ export async function proxy(req: NextRequest) {
   const isAccountPath = pathname.startsWith("/account");
 
   if (isAdminLoginPath || isCustomerAuthPath) {
-    return withRequestId(NextResponse.next());
+    return next();
   }
 
   if (!isAdminPath && !isAccountPath) {
-    return withRequestId(NextResponse.next());
+    return next();
   }
 
   const token = req.cookies.get("adakan_session")?.value;
   if (!token) {
-    return withRequestId(
+    return withSecurityHeaders(
       NextResponse.redirect(new URL(isAdminPath ? "/admin-login" : "/login", req.url))
     );
   }
 
   const payload = await verifySessionToken(token);
   if (!payload) {
-    return withRequestId(
+    return withSecurityHeaders(
       NextResponse.redirect(new URL(isAdminPath ? "/admin-login" : "/login", req.url))
     );
   }
 
   if (isAdminPath && payload.role !== "ADMIN") {
-    return withRequestId(NextResponse.redirect(new URL("/", req.url)));
+    return withSecurityHeaders(NextResponse.redirect(new URL("/", req.url)));
   }
 
-  return withRequestId(NextResponse.next());
+  return next();
 }
 
 export const config = {

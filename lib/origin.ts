@@ -51,12 +51,20 @@ export function isTrustedOriginRequest(input: {
   forwardedProto?: string | null;
 }) {
   const trustedOrigins = buildTrustedOrigins(input.siteUrl, input.configuredOrigins ?? []);
-  const candidates = [
-    normalizeOrigin(input.origin),
-    normalizeOrigin(input.referer),
+  const origin = normalizeOrigin(input.origin);
+  if (origin) {
+    return trustedOrigins.includes(origin);
+  }
+
+  const referer = normalizeOrigin(input.referer);
+  if (referer) {
+    return trustedOrigins.includes(referer);
+  }
+
+  const hostCandidates = [
     normalizeHostOrigin(input.forwardedHost ?? input.host, input.forwardedProto ?? "https"),
     normalizeHostOrigin(input.forwardedHost ?? input.host, "http")
   ].filter((item): item is string => Boolean(item));
 
-  return candidates.some((candidate) => trustedOrigins.includes(candidate));
+  return hostCandidates.some((candidate) => trustedOrigins.includes(candidate));
 }
