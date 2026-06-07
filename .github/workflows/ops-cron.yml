@@ -1,0 +1,37 @@
+name: Ops Cron
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 */6 * * *"
+
+jobs:
+  ops:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+      AUTH_SECRET: ${{ secrets.PRODUCTION_AUTH_SECRET }}
+      NEXT_PUBLIC_SITE_URL: ${{ secrets.PRODUCTION_SITE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npm run ops:assert | tee ops-assert.json
+      - run: npm run ops:report | tee ops-report.json
+      - run: npm run ops:orders:anomalies | tee ops-order-anomalies.json
+      - run: npm run ops:orders:timeout:dry | tee ops-order-timeouts.json
+      - run: npm run ops:cleanup:dry | tee ops-cleanup-dry.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ops-reports
+          path: |
+            ops-assert.json
+            ops-report.json
+            ops-order-anomalies.json
+            ops-order-timeouts.json
+            ops-cleanup-dry.json

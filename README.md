@@ -66,6 +66,12 @@ npm run ops:cleanup:dry
 - Admin mutasyonları hem auth hem trusted-origin hem rate-limit katmanından geçer
 - Checkout create akışı duplicate submit’e karşı replay guard kullanır
 
+## Sentry ve deploy
+
+- Sentry istege bagli ve env-gated calisir; `SENTRY_DSN` veya `NEXT_PUBLIC_SENTRY_DSN` yoksa sessiz no-op kalir.
+- `.github/workflows` altinda `CI`, `Ops Cron`, `Backup Drill`, `Deploy Staging` ve `Deploy Production` workflow’lari vardir.
+- Staging/prod deploy icin `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`, uygun ortam `DATABASE_URL`, `AUTH_SECRET`, `NEXT_PUBLIC_SITE_URL` ve gerekiyorsa Sentry secret’lari tanimlanmalidir.
+
 ## Operasyon rehberi
 
 Ayrıntılı üretim adımları için:

@@ -44,6 +44,13 @@ BirleÅŸik incident raporu:
 npm run ops:report
 ```
 
+Backup / restore tatbikati:
+
+```powershell
+npm run ops:backup:drill
+npm run ops:backup:assert
+```
+
 Bu Ã¶zet ÅŸu sinyalleri raporlar:
 
 - dÃ¼ÅŸÃ¼k stokta aktif Ã¼rÃ¼n sayÄ±sÄ±

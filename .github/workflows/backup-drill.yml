@@ -1,0 +1,29 @@
+name: Backup Drill
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 3 * * 1"
+
+jobs:
+  drill:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+      BACKUP_DRILL_DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+      BACKUP_DRILL_RESTORE_DATABASE_URL: ${{ secrets.BACKUP_DRILL_RESTORE_DATABASE_URL }}
+      AUTH_SECRET: ${{ secrets.PRODUCTION_AUTH_SECRET }}
+      NEXT_PUBLIC_SITE_URL: ${{ secrets.PRODUCTION_SITE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run ops:backup:assert | tee backup-drill.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backup-drill
+          path: backup-drill.json
