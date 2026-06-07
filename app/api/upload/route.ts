@@ -1,4 +1,4 @@
-import { buildApiHeaders, buildJsonApiResponse } from "@/lib/api-response";
+import { buildErrorApiResponse, buildJsonApiResponse } from "@/lib/api-response";
 import { getCurrentUser } from "@/lib/auth";
 import { logError } from "@/lib/logger";
 import { enforceRateLimit, getRequestFingerprint } from "@/lib/rate-limit";
@@ -15,11 +15,7 @@ export async function POST(request: Request) {
   try {
     await assertTrustedMutation("admin:upload");
   } catch (error) {
-    return buildJsonApiResponse(
-      { message: error instanceof Error ? error.message : "Yetkisiz istek", requestId },
-      requestId,
-      { status: 403 }
-    );
+    return buildErrorApiResponse(error, requestId, "Yetkisiz istek", 403);
   }
 
   const currentUser = await getCurrentUser();
@@ -61,16 +57,11 @@ export async function POST(request: Request) {
       message: "Cok fazla dosya yukleme denemesi yapildi. Lutfen biraz sonra tekrar deneyin."
     });
   } catch (error) {
-    return buildJsonApiResponse(
-      {
-        message:
-          error instanceof Error
-            ? error.message
-            : "Yukleme limiti asildi. Lutfen daha sonra tekrar deneyin.",
-        requestId
-      },
+    return buildErrorApiResponse(
+      error,
       requestId,
-      { status: 429 }
+      "Yukleme limiti asildi. Lutfen daha sonra tekrar deneyin.",
+      429
     );
   }
 
@@ -103,14 +94,6 @@ export async function POST(request: Request) {
       adminUserId: currentUser.id,
       folder
     });
-    return buildJsonApiResponse(
-      {
-        message:
-          error instanceof Error ? error.message : "Dosya yuklenemedi. Lutfen tekrar deneyin.",
-        requestId
-      },
-      requestId,
-      { status: 400 }
-    );
+    return buildErrorApiResponse(error, requestId, "Dosya yuklenemedi. Lutfen tekrar deneyin.");
   }
 }

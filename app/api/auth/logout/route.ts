@@ -1,4 +1,4 @@
-import { buildJsonApiResponse } from "@/lib/api-response";
+import { buildErrorApiResponse, buildJsonApiResponse } from "@/lib/api-response";
 import { clearSession } from "@/lib/auth";
 import { logError } from "@/lib/logger";
 import { enforceRateLimit, getRequestFingerprint } from "@/lib/rate-limit";
@@ -22,13 +22,6 @@ export async function POST() {
     return buildJsonApiResponse({ ok: true, requestId }, requestId);
   } catch (error) {
     await logError("auth.logout_failed", error);
-    return buildJsonApiResponse(
-      {
-        message: error instanceof Error ? error.message : "Cikis yapilamadi",
-        requestId
-      },
-      requestId,
-      { status: 400 }
-    );
+    return buildErrorApiResponse(error, requestId, "Cikis yapilamadi");
   }
 }

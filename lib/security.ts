@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { env } from "@/lib/env";
+import { HttpError } from "@/lib/http-error";
 import { logEvent } from "@/lib/logger";
 import { buildTrustedOrigins, isTrustedOriginRequest, parseTrustedOrigins } from "@/lib/origin";
 
@@ -29,5 +30,5 @@ export async function assertTrustedMutation(scope: string) {
     forwardedHost: headerStore.get("x-forwarded-host")
   });
 
-  throw new Error("Istek guvenlik dogrulamasini gecemedi");
+  throw new HttpError(403, "Istek guvenlik dogrulamasini gecemedi");
 }

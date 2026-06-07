@@ -1,4 +1,4 @@
-import { buildJsonApiResponse, buildApiHeaders } from "@/lib/api-response";
+import { buildApiHeaders, buildErrorApiResponse } from "@/lib/api-response";
 import { NextResponse } from "next/server";
 import { processCheckout } from "@/lib/actions/checkout-actions";
 import { env } from "@/lib/env";
@@ -18,13 +18,6 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     await logError("checkout.route_failed", error);
-    return buildJsonApiResponse(
-      {
-        message: error instanceof Error ? error.message : "Checkout tamamlanamadi",
-        requestId
-      },
-      requestId,
-      { status: 400 }
-    );
+    return buildErrorApiResponse(error, requestId, "Checkout tamamlanamadi");
   }
 }

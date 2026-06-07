@@ -1,5 +1,6 @@
 import { cookies, headers } from "next/headers";
 import { createHash } from "node:crypto";
+import { HttpError } from "@/lib/http-error";
 import { logEvent } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
@@ -83,7 +84,7 @@ export async function enforceRateLimit({
       limit,
       windowMs
     });
-    throw new Error(message);
+    throw new HttpError(429, message);
   }
 
   await prisma.actionRateLimit.update({

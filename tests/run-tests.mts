@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
-import { buildApiHeaders } from "../lib/api-response.ts";
+import { buildApiHeadersCore } from "../lib/api-response-core.ts";
 import { actionError, actionSuccess } from "../lib/action-response.ts";
 import { buildCheckoutReplayKey } from "../lib/checkout-replay.ts";
 import { toCsvContent, toCsvRow } from "../lib/csv.ts";
 import { getEnvHealthIndicatorsFromConfig, summarizeHealth } from "../lib/health-core.ts";
+import { HttpError, getHttpErrorStatus } from "../lib/http-error.ts";
 import { formatMoney } from "../lib/money.ts";
 import { buildTrustedOrigins, isTrustedOriginRequest, parseTrustedOrigins } from "../lib/origin.ts";
 import { redactLogValue } from "../lib/log-redaction.ts";
@@ -41,10 +42,22 @@ async function main() {
     {
       name: "api headers always include request id and no-store",
       run: () => {
-        const headers = buildApiHeaders("req-123", { "x-extra": "ok" });
+        const headers = buildApiHeadersCore(
+          "req-123",
+          { "x-extra": "ok" },
+          { "x-content-type-options": "nosniff" }
+        );
         assert.equal(headers.get("x-request-id"), "req-123");
         assert.equal(headers.get("cache-control"), "no-store");
+        assert.equal(headers.get("x-content-type-options"), "nosniff");
         assert.equal(headers.get("x-extra"), "ok");
+      }
+    },
+    {
+      name: "http error exposes explicit status",
+      run: () => {
+        assert.equal(getHttpErrorStatus(new HttpError(429, "Too many")), 429);
+        assert.equal(getHttpErrorStatus(new Error("plain"), 418), 418);
       }
     },
     {
