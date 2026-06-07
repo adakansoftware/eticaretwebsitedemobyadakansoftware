@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { buildApiHeaders } from "../lib/api-response.ts";
 import { actionError, actionSuccess } from "../lib/action-response.ts";
 import { buildCheckoutReplayKey } from "../lib/checkout-replay.ts";
 import { toCsvContent, toCsvRow } from "../lib/csv.ts";
@@ -34,6 +35,15 @@ async function main() {
         if (!result.success) {
           assert.deepEqual(result.fieldErrors, { email: ["Gecersiz"] });
         }
+      }
+    },
+    {
+      name: "api headers always include request id and no-store",
+      run: () => {
+        const headers = buildApiHeaders("req-123", { "x-extra": "ok" });
+        assert.equal(headers.get("x-request-id"), "req-123");
+        assert.equal(headers.get("cache-control"), "no-store");
+        assert.equal(headers.get("x-extra"), "ok");
       }
     },
     {

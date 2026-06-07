@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { buildJsonApiResponse } from "@/lib/api-response";
 import { getEnvHealthIndicators, summarizeHealth } from "@/lib/health";
 import { logError } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
@@ -38,19 +38,14 @@ export async function GET() {
 
   const summary = summarizeHealth(indicators);
 
-  return NextResponse.json(
+  return buildJsonApiResponse(
     {
       ...summary,
       mode: "ready",
       timestamp: new Date().toISOString(),
       requestId
     },
-    {
-      status: summary.ok ? 200 : 503,
-      headers: {
-        "x-request-id": requestId,
-        "cache-control": "no-store"
-      }
-    }
+    requestId,
+    { status: summary.ok ? 200 : 503 }
   );
 }

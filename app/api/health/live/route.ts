@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
+import { buildJsonApiResponse } from "@/lib/api-response";
 import { getRequestId } from "@/lib/request-context";
 
 export async function GET() {
   const requestId = await getRequestId();
 
-  return NextResponse.json(
+  return buildJsonApiResponse(
     {
       ok: true,
       service: "adakan-commerce-core",
@@ -12,11 +12,6 @@ export async function GET() {
       timestamp: new Date().toISOString(),
       requestId
     },
-    {
-      headers: {
-        "x-request-id": requestId,
-        "cache-control": "no-store"
-      }
-    }
+    requestId
   );
 }

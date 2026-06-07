@@ -1,23 +1,34 @@
-import { buildApiHeaders } from "@/lib/api-response";
-import { NextResponse } from "next/server";
+import { buildJsonApiResponse } from "@/lib/api-response";
 import { clearSession } from "@/lib/auth";
 import { logError } from "@/lib/logger";
+import { enforceRateLimit, getRequestFingerprint } from "@/lib/rate-limit";
 import { getRequestId } from "@/lib/request-context";
+import { assertTrustedMutation } from "@/lib/security";
 
 export async function POST() {
   const requestId = await getRequestId();
 
   try {
+    await assertTrustedMutation("auth:logout-route");
+    const fingerprint = await getRequestFingerprint();
+    await enforceRateLimit({
+      scope: "auth:logout-route",
+      key: fingerprint,
+      limit: 20,
+      windowMs: 60 * 1000,
+      message: "Cok fazla cikis istegi gonderildi. Lutfen biraz sonra tekrar deneyin."
+    });
     await clearSession();
-    return NextResponse.json({ ok: true, requestId }, { headers: buildApiHeaders(requestId) });
+    return buildJsonApiResponse({ ok: true, requestId }, requestId);
   } catch (error) {
     await logError("auth.logout_failed", error);
-    return NextResponse.json(
+    return buildJsonApiResponse(
       {
         message: error instanceof Error ? error.message : "Cikis yapilamadi",
         requestId
       },
-      { status: 400, headers: buildApiHeaders(requestId) }
+      requestId,
+      { status: 400 }
     );
   }
 }

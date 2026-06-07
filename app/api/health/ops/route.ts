@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { buildJsonApiResponse } from "@/lib/api-response";
 import { getCurrentUser } from "@/lib/auth";
 import { logError } from "@/lib/logger";
 import { getOpsStatusSummary } from "@/lib/ops-status";
@@ -10,55 +10,40 @@ export async function GET() {
   try {
     const user = await getCurrentUser();
     if (!user || user.role !== "ADMIN") {
-      return NextResponse.json(
+      return buildJsonApiResponse(
         {
           ok: false,
           mode: "ops",
           requestId,
           error: "Yetkisiz"
         },
-        {
-          status: 401,
-          headers: {
-            "x-request-id": requestId,
-            "cache-control": "no-store"
-          }
-        }
+        requestId,
+        { status: 401 }
       );
     }
 
     const summary = await getOpsStatusSummary();
 
-    return NextResponse.json(
+    return buildJsonApiResponse(
       {
         ...summary,
         mode: "ops",
         requestId
       },
-      {
-        status: 200,
-        headers: {
-          "x-request-id": requestId,
-          "cache-control": "no-store"
-        }
-      }
+      requestId,
+      { status: 200 }
     );
   } catch (error) {
     await logError("health.ops.failed", error);
-    return NextResponse.json(
+    return buildJsonApiResponse(
       {
         ok: false,
         mode: "ops",
         requestId,
         error: "Ops status alinamadi"
       },
-      {
-        status: 500,
-        headers: {
-          "x-request-id": requestId,
-          "cache-control": "no-store"
-        }
-      }
+      requestId,
+      { status: 500 }
     );
   }
 }

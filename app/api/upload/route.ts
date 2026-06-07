@@ -1,5 +1,4 @@
-import { buildApiHeaders } from "@/lib/api-response";
-import { NextResponse } from "next/server";
+import { buildApiHeaders, buildJsonApiResponse } from "@/lib/api-response";
 import { getCurrentUser } from "@/lib/auth";
 import { logError } from "@/lib/logger";
 import { enforceRateLimit, getRequestFingerprint } from "@/lib/rate-limit";
@@ -16,18 +15,20 @@ export async function POST(request: Request) {
   try {
     await assertTrustedMutation("admin:upload");
   } catch (error) {
-    return NextResponse.json(
+    return buildJsonApiResponse(
       { message: error instanceof Error ? error.message : "Yetkisiz istek", requestId },
-      { status: 403, headers: buildApiHeaders(requestId) }
+      requestId,
+      { status: 403 }
     );
   }
 
   const currentUser = await getCurrentUser();
 
   if (!currentUser || currentUser.role !== "ADMIN") {
-    return NextResponse.json(
+    return buildJsonApiResponse(
       { message: "Yetkisiz erisim", requestId },
-      { status: 403, headers: buildApiHeaders(requestId) }
+      requestId,
+      { status: 403 }
     );
   }
 
@@ -35,16 +36,18 @@ export async function POST(request: Request) {
   const folder = searchParams.get("field")?.trim() ?? "";
 
   if (!allowedFolders.has(folder)) {
-    return NextResponse.json(
+    return buildJsonApiResponse(
       { message: "Gecersiz yukleme alani", requestId },
-      { status: 400, headers: buildApiHeaders(requestId) }
+      requestId,
+      { status: 400 }
     );
   }
 
   if (contentLength > MAX_UPLOAD_REQUEST_SIZE) {
-    return NextResponse.json(
+    return buildJsonApiResponse(
       { message: "Istek boyutu siniri asildi.", requestId },
-      { status: 413, headers: buildApiHeaders(requestId) }
+      requestId,
+      { status: 413 }
     );
   }
 
@@ -58,7 +61,7 @@ export async function POST(request: Request) {
       message: "Cok fazla dosya yukleme denemesi yapildi. Lutfen biraz sonra tekrar deneyin."
     });
   } catch (error) {
-    return NextResponse.json(
+    return buildJsonApiResponse(
       {
         message:
           error instanceof Error
@@ -66,7 +69,8 @@ export async function POST(request: Request) {
             : "Yukleme limiti asildi. Lutfen daha sonra tekrar deneyin.",
         requestId
       },
-      { status: 429, headers: buildApiHeaders(requestId) }
+      requestId,
+      { status: 429 }
     );
   }
 
@@ -74,36 +78,39 @@ export async function POST(request: Request) {
   const files = formData.getAll("file");
 
   if (files.length !== 1) {
-    return NextResponse.json(
+    return buildJsonApiResponse(
       { message: "Tek seferde yalnizca bir dosya yuklenebilir.", requestId },
-      { status: 400, headers: buildApiHeaders(requestId) }
+      requestId,
+      { status: 400 }
     );
   }
 
   const [file] = files;
 
   if (!(file instanceof File)) {
-    return NextResponse.json(
+    return buildJsonApiResponse(
       { message: "Gecerli bir dosya secilmedi.", requestId },
-      { status: 400, headers: buildApiHeaders(requestId) }
+      requestId,
+      { status: 400 }
     );
   }
 
   try {
     const url = await uploadFile(file, folder);
-    return NextResponse.json({ url, requestId }, { headers: buildApiHeaders(requestId) });
+    return buildJsonApiResponse({ url, requestId }, requestId);
   } catch (error) {
     await logError("admin.upload_failed", error, {
       adminUserId: currentUser.id,
       folder
     });
-    return NextResponse.json(
+    return buildJsonApiResponse(
       {
         message:
           error instanceof Error ? error.message : "Dosya yuklenemedi. Lutfen tekrar deneyin.",
         requestId
       },
-      { status: 400, headers: buildApiHeaders(requestId) }
+      requestId,
+      { status: 400 }
     );
   }
 }
