@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { OrderStatus } from "@prisma/client";
 import { createAdminAuditLog } from "@/lib/admin-audit";
 import { actionError, actionSuccess, type ActionResult } from "@/lib/action-response";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminPermission, adminPermissions } from "@/lib/auth";
 import { outboxEventTypes, enqueueOutboxEvent } from "@/lib/outbox";
 import { prisma } from "@/lib/prisma";
 import { enforceRateLimit } from "@/lib/rate-limit";
@@ -31,7 +31,7 @@ function revalidateOrderPaths(orderId: string) {
 
 export async function updateAdminOrderAction(formData: FormData) {
   await assertTrustedMutation("admin:order-update");
-  const admin = await requireAdmin();
+  const admin = await requireAdminPermission(adminPermissions.ordersWrite);
   await enforceRateLimit({
     scope: "admin:order-update",
     key: admin.id,
@@ -176,7 +176,7 @@ export async function updateAdminOrderAction(formData: FormData) {
 
 export async function confirmManualPaymentAction(formData: FormData) {
   await assertTrustedMutation("admin:payment-confirm");
-  const admin = await requireAdmin();
+  const admin = await requireAdminPermission(adminPermissions.ordersWrite);
   await enforceRateLimit({
     scope: "admin:payment-confirm",
     key: admin.id,

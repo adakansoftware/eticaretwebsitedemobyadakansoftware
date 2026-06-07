@@ -45,6 +45,13 @@ Combined incident snapshot:
 npm run ops:report
 ```
 
+Admin permission inventory and dry-run updates:
+
+```powershell
+npm run ops:admin:permissions
+npm run ops:admin:permissions -- --email=admin@adakancommerce.com --grant=ops:read --revoke=settings:write
+```
+
 Outbox worker:
 
 ```powershell

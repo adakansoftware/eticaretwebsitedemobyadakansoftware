@@ -1,5 +1,5 @@
 import { buildJsonApiResponse } from "@/lib/api-response";
-import { getCurrentUser } from "@/lib/auth";
+import { adminPermissions, requireAdminPermission } from "@/lib/auth";
 import { logError } from "@/lib/logger";
 import { getOpsStatusSummary } from "@/lib/ops-status";
 import { getRequestId } from "@/lib/request-context";
@@ -8,8 +8,9 @@ export async function GET() {
   const requestId = await getRequestId();
 
   try {
-    const user = await getCurrentUser();
-    if (!user || user.role !== "ADMIN") {
+    try {
+      await requireAdminPermission(adminPermissions.opsRead);
+    } catch {
       return buildJsonApiResponse(
         {
           ok: false,

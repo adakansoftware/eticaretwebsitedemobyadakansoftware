@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminAuditLog } from "@/lib/admin-audit";
 import { actionError, actionSuccess, type ActionResult } from "@/lib/action-response";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminPermission, adminPermissions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { assertTrustedMutation } from "@/lib/security";
@@ -11,7 +11,7 @@ import { inventoryAdjustmentSchema } from "@/lib/validators";
 
 async function adjustInventory(formData: FormData) {
   await assertTrustedMutation("admin:inventory-adjust");
-  const admin = await requireAdmin();
+  const admin = await requireAdminPermission(adminPermissions.inventoryWrite);
   await enforceRateLimit({
     scope: "admin:inventory-adjust",
     key: admin.id,

@@ -52,6 +52,7 @@ npm run e2e
 npm run ops:preflight
 npm run ops:assert
 npm run ops:report
+npm run ops:admin:permissions
 npm run ops:outbox
 npm run ops:outbox:requeue:dry
 npm run ops:cleanup:dry

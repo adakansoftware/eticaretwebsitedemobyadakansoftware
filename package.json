@@ -17,6 +17,7 @@
     "e2e:prepare": "npm run prisma:seed",
     "ops:preflight": "node --experimental-strip-types scripts/preflight.mts",
     "ops:audit:summary": "node --experimental-strip-types scripts/audit-summary.mts",
+    "ops:admin:permissions": "node --experimental-strip-types scripts/admin-permissions.mts",
     "ops:status": "node --experimental-strip-types scripts/ops-status.mts",
     "ops:assert": "node --experimental-strip-types scripts/ops-assert.mts",
     "ops:report": "node --experimental-strip-types scripts/ops-report.mts",

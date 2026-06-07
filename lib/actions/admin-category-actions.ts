@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createAdminAuditLog } from "@/lib/admin-audit";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminPermission, adminPermissions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { assertTrustedMutation } from "@/lib/security";
@@ -40,7 +40,7 @@ function revalidateCategoryPaths() {
 
 export async function createCategoryAction(formData: FormData) {
   await assertTrustedMutation("admin:category-create");
-  const admin = await requireAdmin();
+  const admin = await requireAdminPermission(adminPermissions.catalogWrite);
   await enforceRateLimit({
     scope: "admin:category-create",
     key: admin.id,
@@ -64,7 +64,7 @@ export async function createCategoryAction(formData: FormData) {
 
 export async function updateCategoryAction(formData: FormData) {
   await assertTrustedMutation("admin:category-update");
-  const admin = await requireAdmin();
+  const admin = await requireAdminPermission(adminPermissions.catalogWrite);
   await enforceRateLimit({
     scope: "admin:category-update",
     key: admin.id,
@@ -100,7 +100,7 @@ export async function updateCategoryAction(formData: FormData) {
 
 export async function deleteCategoryAction(formData: FormData) {
   await assertTrustedMutation("admin:category-delete");
-  const admin = await requireAdmin();
+  const admin = await requireAdminPermission(adminPermissions.catalogWrite);
   await enforceRateLimit({
     scope: "admin:category-delete",
     key: admin.id,

@@ -1,5 +1,5 @@
 import { buildErrorApiResponse, buildJsonApiResponse } from "@/lib/api-response";
-import { getCurrentUser } from "@/lib/auth";
+import { adminPermissions, requireAdminPermission } from "@/lib/auth";
 import { logError } from "@/lib/logger";
 import { enforceRateLimit, getRequestFingerprint } from "@/lib/rate-limit";
 import { getRequestId } from "@/lib/request-context";
@@ -18,9 +18,10 @@ export async function POST(request: Request) {
     return buildErrorApiResponse(error, requestId, "Yetkisiz istek", 403);
   }
 
-  const currentUser = await getCurrentUser();
-
-  if (!currentUser || currentUser.role !== "ADMIN") {
+  let currentUser;
+  try {
+    currentUser = await requireAdminPermission(adminPermissions.mediaUpload);
+  } catch {
     return buildJsonApiResponse(
       { message: "Yetkisiz erisim", requestId },
       requestId,

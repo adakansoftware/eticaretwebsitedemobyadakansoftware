@@ -4,7 +4,7 @@ import { OrderStatus, PaymentStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { createAdminAuditLog } from "@/lib/admin-audit";
 import { actionError, actionSuccess, type ActionResult } from "@/lib/action-response";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminPermission, adminPermissions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { assertTrustedMutation } from "@/lib/security";
@@ -107,7 +107,7 @@ export async function updateOrderStatusAction(formData: FormData) {
     throw new Error("Gecersiz odeme durumu");
   }
 
-  const admin = await requireAdmin();
+  const admin = await requireAdminPermission(adminPermissions.ordersWrite);
   await enforceRateLimit({
     scope: "admin:legacy-order-update",
     key: admin.id,
@@ -146,7 +146,7 @@ export async function updateOrderStatusAction(formData: FormData) {
 
 export async function createProductAction(formData: FormData) {
   await assertTrustedMutation("admin:legacy-product-create");
-  const admin = await requireAdmin();
+  const admin = await requireAdminPermission(adminPermissions.catalogWrite);
   await enforceRateLimit({
     scope: "admin:legacy-product-create",
     key: admin.id,
@@ -190,7 +190,7 @@ export async function createProductAction(formData: FormData) {
 
 export async function updateProductAction(formData: FormData) {
   await assertTrustedMutation("admin:legacy-product-update");
-  const admin = await requireAdmin();
+  const admin = await requireAdminPermission(adminPermissions.catalogWrite);
   await enforceRateLimit({
     scope: "admin:legacy-product-update",
     key: admin.id,
@@ -252,7 +252,7 @@ export async function updateProductAction(formData: FormData) {
 
 export async function deleteProductAction(formData: FormData) {
   await assertTrustedMutation("admin:legacy-product-delete");
-  const admin = await requireAdmin();
+  const admin = await requireAdminPermission(adminPermissions.catalogWrite);
   await enforceRateLimit({
     scope: "admin:legacy-product-delete",
     key: admin.id,

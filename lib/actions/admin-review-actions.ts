@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminAuditLog } from "@/lib/admin-audit";
 import { actionError, actionSuccess, type ActionResult } from "@/lib/action-response";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminPermission, adminPermissions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { syncProductReviewStats } from "@/lib/review-stats";
@@ -18,7 +18,7 @@ function revalidateReviewPaths(productSlug?: string) {
 
 export async function updateReviewStatusAction(formData: FormData) {
   await assertTrustedMutation("admin:review-update");
-  const admin = await requireAdmin();
+  const admin = await requireAdminPermission(adminPermissions.reviewsModerate);
   await enforceRateLimit({
     scope: "admin:review-update",
     key: admin.id,
@@ -51,7 +51,7 @@ export async function updateReviewStatusAction(formData: FormData) {
 
 export async function deleteReviewAction(formData: FormData) {
   await assertTrustedMutation("admin:review-delete");
-  const admin = await requireAdmin();
+  const admin = await requireAdminPermission(adminPermissions.reviewsModerate);
   await enforceRateLimit({
     scope: "admin:review-delete",
     key: admin.id,

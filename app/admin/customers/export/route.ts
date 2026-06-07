@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
-import { getCurrentUser } from "@/lib/auth";
+import { adminPermissions, requireAdminPermission } from "@/lib/auth";
 import { toCsvContent } from "@/lib/csv";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(request: Request) {
-  const currentUser = await getCurrentUser();
-  if (!currentUser || currentUser.role !== "ADMIN") {
+  try {
+    await requireAdminPermission(adminPermissions.customersRead);
+  } catch {
     return NextResponse.json({ message: "Yetkisiz erisim" }, { status: 403 });
   }
 

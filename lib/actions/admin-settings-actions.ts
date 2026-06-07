@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminAuditLog } from "@/lib/admin-audit";
 import { actionError, actionSuccess, type ActionResult } from "@/lib/action-response";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminPermission, adminPermissions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { assertTrustedMutation } from "@/lib/security";
@@ -11,7 +11,7 @@ import { siteSettingsAdminSchema } from "@/lib/validators";
 
 async function updateSiteSettings(formData: FormData) {
   await assertTrustedMutation("admin:settings-update");
-  const admin = await requireAdmin();
+  const admin = await requireAdminPermission(adminPermissions.settingsWrite);
   await enforceRateLimit({
     scope: "admin:settings-update",
     key: admin.id,

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminAuditLog } from "@/lib/admin-audit";
 import { actionError, actionSuccess, type ActionResult } from "@/lib/action-response";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminPermission, adminPermissions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { assertTrustedMutation } from "@/lib/security";
@@ -29,7 +29,7 @@ function revalidateBannerPaths() {
 
 export async function createBannerAction(formData: FormData) {
   await assertTrustedMutation("admin:banner-create");
-  const admin = await requireAdmin();
+  const admin = await requireAdminPermission(adminPermissions.catalogWrite);
   await enforceRateLimit({
     scope: "admin:banner-create",
     key: admin.id,
@@ -52,7 +52,7 @@ export async function createBannerAction(formData: FormData) {
 
 export async function updateBannerAction(formData: FormData) {
   await assertTrustedMutation("admin:banner-update");
-  const admin = await requireAdmin();
+  const admin = await requireAdminPermission(adminPermissions.catalogWrite);
   await enforceRateLimit({
     scope: "admin:banner-update",
     key: admin.id,
@@ -82,7 +82,7 @@ export async function updateBannerAction(formData: FormData) {
 
 export async function deleteBannerAction(formData: FormData) {
   await assertTrustedMutation("admin:banner-delete");
-  const admin = await requireAdmin();
+  const admin = await requireAdminPermission(adminPermissions.catalogWrite);
   await enforceRateLimit({
     scope: "admin:banner-delete",
     key: admin.id,

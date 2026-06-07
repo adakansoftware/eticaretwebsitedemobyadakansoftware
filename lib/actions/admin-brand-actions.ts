@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createAdminAuditLog } from "@/lib/admin-audit";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminPermission, adminPermissions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { assertTrustedMutation } from "@/lib/security";
@@ -40,7 +40,7 @@ function revalidateBrandPaths() {
 
 export async function createBrandAction(formData: FormData) {
   await assertTrustedMutation("admin:brand-create");
-  const admin = await requireAdmin();
+  const admin = await requireAdminPermission(adminPermissions.catalogWrite);
   await enforceRateLimit({
     scope: "admin:brand-create",
     key: admin.id,
@@ -64,7 +64,7 @@ export async function createBrandAction(formData: FormData) {
 
 export async function updateBrandAction(formData: FormData) {
   await assertTrustedMutation("admin:brand-update");
-  const admin = await requireAdmin();
+  const admin = await requireAdminPermission(adminPermissions.catalogWrite);
   await enforceRateLimit({
     scope: "admin:brand-update",
     key: admin.id,
@@ -95,7 +95,7 @@ export async function updateBrandAction(formData: FormData) {
 
 export async function deleteBrandAction(formData: FormData) {
   await assertTrustedMutation("admin:brand-delete");
-  const admin = await requireAdmin();
+  const admin = await requireAdminPermission(adminPermissions.catalogWrite);
   await enforceRateLimit({
     scope: "admin:brand-delete",
     key: admin.id,

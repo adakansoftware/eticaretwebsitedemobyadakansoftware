@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminAuditLog } from "@/lib/admin-audit";
 import { actionError, actionSuccess, type ActionResult } from "@/lib/action-response";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminPermission, adminPermissions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { assertTrustedMutation } from "@/lib/security";
@@ -39,7 +39,7 @@ function revalidateCouponPaths() {
 
 export async function createCouponAction(formData: FormData) {
   await assertTrustedMutation("admin:coupon-create");
-  const admin = await requireAdmin();
+  const admin = await requireAdminPermission(adminPermissions.promotionsWrite);
   await enforceRateLimit({
     scope: "admin:coupon-create",
     key: admin.id,
@@ -65,7 +65,7 @@ export async function createCouponAction(formData: FormData) {
 
 export async function updateCouponAction(formData: FormData) {
   await assertTrustedMutation("admin:coupon-update");
-  const admin = await requireAdmin();
+  const admin = await requireAdminPermission(adminPermissions.promotionsWrite);
   await enforceRateLimit({
     scope: "admin:coupon-update",
     key: admin.id,
@@ -100,7 +100,7 @@ export async function updateCouponAction(formData: FormData) {
 
 export async function deleteCouponAction(formData: FormData) {
   await assertTrustedMutation("admin:coupon-delete");
-  const admin = await requireAdmin();
+  const admin = await requireAdminPermission(adminPermissions.promotionsWrite);
   await enforceRateLimit({
     scope: "admin:coupon-delete",
     key: admin.id,

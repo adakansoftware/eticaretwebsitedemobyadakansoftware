@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { adminPermissions, buildAdminPermissionPatch, hasAdminPermission } from "../lib/admin-policy.ts";
 import { buildApiHeadersCore } from "../lib/api-response-core.ts";
 import { actionError, actionSuccess } from "../lib/action-response.ts";
 import { buildCheckoutReplayKey } from "../lib/checkout-replay.ts";
@@ -44,6 +45,52 @@ async function main() {
         if (!result.success) {
           assert.deepEqual(result.fieldErrors, { email: ["Gecersiz"] });
         }
+      }
+    },
+    {
+      name: "admin policy grants full access when permissions are unset",
+      run: () => {
+        assert.equal(
+          hasAdminPermission({ role: "ADMIN", adminPermissions: null }, adminPermissions.ordersWrite),
+          true
+        );
+        assert.equal(
+          hasAdminPermission({ role: "USER", adminPermissions: null }, adminPermissions.ordersWrite),
+          false
+        );
+      }
+    },
+    {
+      name: "admin policy enforces scoped permission lists",
+      run: () => {
+        assert.equal(
+          hasAdminPermission(
+            { role: "ADMIN", adminPermissions: [adminPermissions.ordersWrite, adminPermissions.opsRead] },
+            adminPermissions.ordersWrite
+          ),
+          true
+        );
+        assert.equal(
+          hasAdminPermission(
+            { role: "ADMIN", adminPermissions: [adminPermissions.ordersWrite, adminPermissions.opsRead] },
+            adminPermissions.settingsWrite
+          ),
+          false
+        );
+      }
+    },
+    {
+      name: "admin permission patch can grant and revoke entries",
+      run: () => {
+        const next = buildAdminPermissionPatch(
+          [adminPermissions.ordersWrite, adminPermissions.settingsWrite],
+          {
+            grant: [adminPermissions.opsRead],
+            revoke: [adminPermissions.settingsWrite]
+          }
+        );
+
+        assert.deepEqual(next, [adminPermissions.opsRead, adminPermissions.ordersWrite]);
       }
     },
     {

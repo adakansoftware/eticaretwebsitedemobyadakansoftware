@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
+import { adminPermissions, hasAdminPermission, type AdminPermission } from "@/lib/admin-policy";
 import { prisma } from "@/lib/prisma";
 import {
   isSecureCookieEnvironment,
@@ -72,7 +73,7 @@ export async function getCurrentUser() {
 
   return prisma.user.findUnique({
     where: { id: session.userId },
-    select: { id: true, name: true, email: true, role: true, phone: true }
+    select: { id: true, name: true, email: true, role: true, phone: true, adminPermissions: true }
   });
 }
 
@@ -88,3 +89,15 @@ export async function requireAdmin() {
   if (user.role !== "ADMIN") redirect("/");
   return user;
 }
+
+export async function requireAdminPermission(permission: AdminPermission) {
+  const admin = await requireAdmin();
+
+  if (!hasAdminPermission(admin, permission)) {
+    redirect("/");
+  }
+
+  return admin;
+}
+
+export { adminPermissions };
