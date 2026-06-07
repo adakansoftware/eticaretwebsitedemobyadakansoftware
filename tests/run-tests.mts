@@ -5,6 +5,7 @@ import { toCsvContent, toCsvRow } from "../lib/csv.ts";
 import { getEnvHealthIndicatorsFromConfig, summarizeHealth } from "../lib/health-core.ts";
 import { formatMoney } from "../lib/money.ts";
 import { buildTrustedOrigins, isTrustedOriginRequest, parseTrustedOrigins } from "../lib/origin.ts";
+import { detectOrderAnomalies } from "../lib/order-anomalies-core.ts";
 import { summarizeOpsStatus } from "../lib/ops-core.ts";
 import { createSlug } from "../lib/slug.ts";
 
@@ -174,6 +175,52 @@ async function main() {
         assert.equal(summary.signals.find((signal) => signal.name === "low_stock")?.ok, false);
         assert.equal(summary.signals.find((signal) => signal.name === "stuck_orders")?.ok, false);
         assert.equal(summary.signals.find((signal) => signal.name === "rate_limit_blocks")?.ok, false);
+      }
+    },
+    {
+      name: "order anomaly detector flags stuck and missing tracking orders",
+      run: () => {
+        const anomalies = detectOrderAnomalies(
+          [
+            {
+              orderId: "order-1",
+              orderNumber: "ADK-1",
+              status: "WAITING_PAYMENT",
+              paymentStatus: "CONFIRMED",
+              paymentMethod: "BANK_TRANSFER",
+              createdAt: new Date("2026-06-07T08:00:00.000Z"),
+              updatedAt: new Date("2026-06-07T08:30:00.000Z"),
+              trackingNumber: null,
+              trackingCarrier: null,
+              inventoryRestoredAt: null
+            },
+            {
+              orderId: "order-2",
+              orderNumber: "ADK-2",
+              status: "SHIPPED",
+              paymentStatus: "CONFIRMED",
+              paymentMethod: "CASH_ON_DELIVERY",
+              createdAt: new Date("2026-06-07T10:00:00.000Z"),
+              updatedAt: new Date("2026-06-07T10:15:00.000Z"),
+              trackingNumber: null,
+              trackingCarrier: "Yurtici",
+              inventoryRestoredAt: null
+            }
+          ],
+          { stuckOrderMinutes: 120 },
+          new Date("2026-06-07T12:30:00.000Z")
+        );
+
+        assert.equal(anomalies.length, 2);
+        assert.equal(anomalies[0]?.reasons.includes("stuck_fulfillment_or_payment"), true);
+        assert.equal(
+          anomalies[0]?.reasons.includes("payment_confirmed_but_order_not_progressed"),
+          true
+        );
+        assert.equal(
+          anomalies[1]?.reasons.includes("shipping_status_missing_tracking"),
+          true
+        );
       }
     }
   ];

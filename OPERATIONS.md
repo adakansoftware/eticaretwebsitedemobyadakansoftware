@@ -41,6 +41,20 @@ Bu Ã¶zet ÅŸu sinyalleri raporlar:
 - temizlenmemiÅŸ replay guard kayÄ±tlarÄ±
 - site settings ve admin kullanÄ±cÄ± varlÄ±ÄŸÄ±
 
+SipariÅŸ anomali raporu:
+
+```powershell
+npm run ops:orders:anomalies
+```
+
+Bu rapor ÅŸunlarÄ± ayrÄ±ÅŸtÄ±rÄ±r:
+
+- stuck fulfillment / payment
+- onaylanmÄ±ÅŸ Ã¶deme ama ilerlemeyen sipariÅŸ
+- tracking bilgisi eksik sevk sipariÅŸi
+- inventory restore iÅŸareti eksik iptal / iade
+- payment kaydÄ± eksik havale sipariÅŸi
+
 ## Cleanup / retention
 
 Ön izleme:
