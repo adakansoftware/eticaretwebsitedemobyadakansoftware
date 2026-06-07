@@ -6,6 +6,7 @@ import { actionError, actionSuccess, type ActionResult } from "@/lib/action-resp
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { enforceRateLimit } from "@/lib/rate-limit";
+import { assertTrustedMutation } from "@/lib/security";
 import { couponAdminSchema } from "@/lib/validators";
 
 function buildCouponData(formData: FormData) {
@@ -37,6 +38,7 @@ function revalidateCouponPaths() {
 }
 
 export async function createCouponAction(formData: FormData) {
+  await assertTrustedMutation("admin:coupon-create");
   const admin = await requireAdmin();
   await enforceRateLimit({
     scope: "admin:coupon-create",
@@ -57,11 +59,12 @@ export async function createCouponAction(formData: FormData) {
     entityId: data.code,
     summary: `Kupon olusturuldu: ${data.code}`,
     metadata: { code: data.code, isActive: data.isActive }
-  });
+  }, { adminUserId: admin.id });
   revalidateCouponPaths();
 }
 
 export async function updateCouponAction(formData: FormData) {
+  await assertTrustedMutation("admin:coupon-update");
   const admin = await requireAdmin();
   await enforceRateLimit({
     scope: "admin:coupon-update",
@@ -90,12 +93,13 @@ export async function updateCouponAction(formData: FormData) {
     entityId: couponId,
     summary: `Kupon guncellendi: ${data.code}`,
     metadata: { code: data.code, isActive: data.isActive }
-  });
+  }, { adminUserId: admin.id });
 
   revalidateCouponPaths();
 }
 
 export async function deleteCouponAction(formData: FormData) {
+  await assertTrustedMutation("admin:coupon-delete");
   const admin = await requireAdmin();
   await enforceRateLimit({
     scope: "admin:coupon-delete",
@@ -115,7 +119,7 @@ export async function deleteCouponAction(formData: FormData) {
     entityId: couponId,
     summary: `Kupon silindi: ${coupon?.code ?? couponId}`,
     metadata: { code: coupon?.code ?? null }
-  });
+  }, { adminUserId: admin.id });
   revalidateCouponPaths();
 }
 

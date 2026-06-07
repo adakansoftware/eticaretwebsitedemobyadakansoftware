@@ -1,8 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { createAdminAuditLog } from "@/lib/admin-audit";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { enforceRateLimit } from "@/lib/rate-limit";
+import { assertTrustedMutation } from "@/lib/security";
 import { createSlug } from "@/lib/slug";
 import { categoryAdminSchema } from "@/lib/validators";
 
@@ -36,16 +39,39 @@ function revalidateCategoryPaths() {
 }
 
 export async function createCategoryAction(formData: FormData) {
-  await requireAdmin();
+  await assertTrustedMutation("admin:category-create");
+  const admin = await requireAdmin();
+  await enforceRateLimit({
+    scope: "admin:category-create",
+    key: admin.id,
+    limit: 20,
+    windowMs: 10 * 60 * 1000,
+    message: "Cok fazla kategori islemi yapildi. Lutfen biraz sonra tekrar deneyin."
+  });
   const data = buildCategoryData(formData);
   await ensureUniqueCategorySlug(data.slug);
 
-  await prisma.category.create({ data });
+  const category = await prisma.category.create({ data });
+  await createAdminAuditLog({
+    action: "CREATE",
+    entityType: "CATEGORY",
+    entityId: category.id,
+    summary: `Kategori olusturuldu: ${category.name}`,
+    metadata: { slug: category.slug, isActive: category.isActive }
+  }, { adminUserId: admin.id });
   revalidateCategoryPaths();
 }
 
 export async function updateCategoryAction(formData: FormData) {
-  await requireAdmin();
+  await assertTrustedMutation("admin:category-update");
+  const admin = await requireAdmin();
+  await enforceRateLimit({
+    scope: "admin:category-update",
+    key: admin.id,
+    limit: 30,
+    windowMs: 10 * 60 * 1000,
+    message: "Cok fazla kategori islemi yapildi. Lutfen biraz sonra tekrar deneyin."
+  });
   const categoryId = String(formData.get("categoryId") ?? "");
   if (!categoryId) throw new Error("Kategori bulunamadi");
 
@@ -55,10 +81,17 @@ export async function updateCategoryAction(formData: FormData) {
   const existing = await prisma.category.findUnique({ where: { id: categoryId } });
   if (!existing) throw new Error("Kategori bulunamadi");
 
-  await prisma.category.update({
+  const category = await prisma.category.update({
     where: { id: categoryId },
     data
   });
+  await createAdminAuditLog({
+    action: "UPDATE",
+    entityType: "CATEGORY",
+    entityId: category.id,
+    summary: `Kategori guncellendi: ${category.name}`,
+    metadata: { slug: category.slug, isActive: category.isActive }
+  }, { adminUserId: admin.id });
 
   revalidateCategoryPaths();
   revalidatePath(`/category/${existing.slug}`);
@@ -66,7 +99,15 @@ export async function updateCategoryAction(formData: FormData) {
 }
 
 export async function deleteCategoryAction(formData: FormData) {
-  await requireAdmin();
+  await assertTrustedMutation("admin:category-delete");
+  const admin = await requireAdmin();
+  await enforceRateLimit({
+    scope: "admin:category-delete",
+    key: admin.id,
+    limit: 15,
+    windowMs: 10 * 60 * 1000,
+    message: "Cok fazla kategori silme islemi yapildi. Lutfen biraz sonra tekrar deneyin."
+  });
   const categoryId = String(formData.get("categoryId") ?? "");
   if (!categoryId) throw new Error("Kategori bulunamadi");
 
@@ -81,6 +122,13 @@ export async function deleteCategoryAction(formData: FormData) {
   }
 
   await prisma.category.delete({ where: { id: categoryId } });
+  await createAdminAuditLog({
+    action: "DELETE",
+    entityType: "CATEGORY",
+    entityId: category.id,
+    summary: `Kategori silindi: ${category.name}`,
+    metadata: { slug: category.slug }
+  }, { adminUserId: admin.id });
   revalidateCategoryPaths();
   revalidatePath(`/category/${category.slug}`);
 }

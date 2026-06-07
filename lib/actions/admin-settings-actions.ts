@@ -6,9 +6,11 @@ import { actionError, actionSuccess, type ActionResult } from "@/lib/action-resp
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { enforceRateLimit } from "@/lib/rate-limit";
+import { assertTrustedMutation } from "@/lib/security";
 import { siteSettingsAdminSchema } from "@/lib/validators";
 
 async function updateSiteSettings(formData: FormData) {
+  await assertTrustedMutation("admin:settings-update");
   const admin = await requireAdmin();
   await enforceRateLimit({
     scope: "admin:settings-update",
@@ -49,7 +51,7 @@ async function updateSiteSettings(formData: FormData) {
       shippingFee: parsed.data.shippingFee,
       freeShippingThreshold: parsed.data.freeShippingThreshold ?? null
     }
-  });
+  }, { adminUserId: admin.id });
 
   revalidatePath("/admin/settings");
   revalidatePath("/");

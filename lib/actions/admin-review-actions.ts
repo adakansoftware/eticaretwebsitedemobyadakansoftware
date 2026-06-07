@@ -5,7 +5,9 @@ import { createAdminAuditLog } from "@/lib/admin-audit";
 import { actionError, actionSuccess, type ActionResult } from "@/lib/action-response";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import { syncProductReviewStats } from "@/lib/review-stats";
+import { assertTrustedMutation } from "@/lib/security";
 import { reviewStatusSchema } from "@/lib/validators";
 
 function revalidateReviewPaths(productSlug?: string) {
@@ -15,7 +17,15 @@ function revalidateReviewPaths(productSlug?: string) {
 }
 
 export async function updateReviewStatusAction(formData: FormData) {
-  await requireAdmin();
+  await assertTrustedMutation("admin:review-update");
+  const admin = await requireAdmin();
+  await enforceRateLimit({
+    scope: "admin:review-update",
+    key: admin.id,
+    limit: 40,
+    windowMs: 10 * 60 * 1000,
+    message: "Cok fazla yorum islemi yapildi. Lutfen biraz sonra tekrar deneyin."
+  });
 
   const parsed = reviewStatusSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
@@ -34,13 +44,21 @@ export async function updateReviewStatusAction(formData: FormData) {
     entityId: review.id,
     summary: `Yorum durumu guncellendi: ${review.product.name}`,
     metadata: { status: parsed.data.status, productId: review.productId }
-  });
+  }, { adminUserId: admin.id });
   await syncProductReviewStats(review.productId);
   revalidateReviewPaths(review.product.slug);
 }
 
 export async function deleteReviewAction(formData: FormData) {
-  await requireAdmin();
+  await assertTrustedMutation("admin:review-delete");
+  const admin = await requireAdmin();
+  await enforceRateLimit({
+    scope: "admin:review-delete",
+    key: admin.id,
+    limit: 25,
+    windowMs: 10 * 60 * 1000,
+    message: "Cok fazla yorum silme islemi yapildi. Lutfen biraz sonra tekrar deneyin."
+  });
   const reviewId = String(formData.get("reviewId") ?? "");
   if (!reviewId) throw new Error("Yorum bulunamadi");
 
@@ -58,7 +76,7 @@ export async function deleteReviewAction(formData: FormData) {
     entityId: reviewId,
     summary: `Yorum silindi: ${review.product.name}`,
     metadata: { productId: review.productId }
-  });
+  }, { adminUserId: admin.id });
   await syncProductReviewStats(review.productId);
   revalidateReviewPaths(review.product.slug);
 }

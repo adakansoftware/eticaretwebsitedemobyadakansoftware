@@ -15,6 +15,7 @@
     "e2e:headed": "playwright test --headed",
     "e2e:prepare": "npm run prisma:seed",
     "ops:preflight": "node --experimental-strip-types scripts/preflight.mts",
+    "ops:audit:summary": "node --experimental-strip-types scripts/audit-summary.mts",
     "ops:cleanup:dry": "node --experimental-strip-types scripts/ops-cleanup.mts --dry-run",
     "ops:cleanup:apply": "node --experimental-strip-types scripts/ops-cleanup.mts --apply",
     "verify": "npm run ops:preflight && npm run lint && npm run typecheck && npm run test && npm run build",

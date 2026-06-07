@@ -6,6 +6,7 @@ import { actionError, actionSuccess, type ActionResult } from "@/lib/action-resp
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { enforceRateLimit } from "@/lib/rate-limit";
+import { assertTrustedMutation } from "@/lib/security";
 import { bannerAdminSchema } from "@/lib/validators";
 
 function buildBannerData(formData: FormData) {
@@ -27,6 +28,7 @@ function revalidateBannerPaths() {
 }
 
 export async function createBannerAction(formData: FormData) {
+  await assertTrustedMutation("admin:banner-create");
   const admin = await requireAdmin();
   await enforceRateLimit({
     scope: "admin:banner-create",
@@ -44,11 +46,12 @@ export async function createBannerAction(formData: FormData) {
     entityId: banner.id,
     summary: `Banner olusturuldu: ${banner.title}`,
     metadata: { title: banner.title, isActive: banner.isActive }
-  });
+  }, { adminUserId: admin.id });
   revalidateBannerPaths();
 }
 
 export async function updateBannerAction(formData: FormData) {
+  await assertTrustedMutation("admin:banner-update");
   const admin = await requireAdmin();
   await enforceRateLimit({
     scope: "admin:banner-update",
@@ -72,12 +75,13 @@ export async function updateBannerAction(formData: FormData) {
     entityId: banner.id,
     summary: `Banner guncellendi: ${banner.title}`,
     metadata: { title: banner.title, isActive: banner.isActive }
-  });
+  }, { adminUserId: admin.id });
 
   revalidateBannerPaths();
 }
 
 export async function deleteBannerAction(formData: FormData) {
+  await assertTrustedMutation("admin:banner-delete");
   const admin = await requireAdmin();
   await enforceRateLimit({
     scope: "admin:banner-delete",
@@ -97,7 +101,7 @@ export async function deleteBannerAction(formData: FormData) {
     entityId: bannerId,
     summary: `Banner silindi: ${banner?.title ?? bannerId}`,
     metadata: { title: banner?.title ?? null }
-  });
+  }, { adminUserId: admin.id });
   revalidateBannerPaths();
 }
 

@@ -6,9 +6,11 @@ import { actionError, actionSuccess, type ActionResult } from "@/lib/action-resp
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { enforceRateLimit } from "@/lib/rate-limit";
+import { assertTrustedMutation } from "@/lib/security";
 import { inventoryAdjustmentSchema } from "@/lib/validators";
 
 async function adjustInventory(formData: FormData) {
+  await assertTrustedMutation("admin:inventory-adjust");
   const admin = await requireAdmin();
   await enforceRateLimit({
     scope: "admin:inventory-adjust",
@@ -71,7 +73,7 @@ async function adjustInventory(formData: FormData) {
       reason: parsed.data.reason,
       stockAfter: auditContext.nextStock
     }
-  });
+  }, { adminUserId: admin.id });
 
   revalidatePath("/admin/inventory");
   revalidatePath("/admin/products");

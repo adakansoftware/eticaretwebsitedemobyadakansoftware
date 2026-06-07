@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { enforceRateLimit, getRequestFingerprint } from "@/lib/rate-limit";
+import { assertTrustedMutation } from "@/lib/security";
 import { addressSchema } from "@/lib/validators";
 
 async function unsetDefaultAddress(userId: string, excludeId?: string) {
@@ -14,6 +16,15 @@ async function unsetDefaultAddress(userId: string, excludeId?: string) {
 
 export async function createAddressAction(formData: FormData) {
   const user = await requireUser();
+  await assertTrustedMutation("account:address-create");
+  const fingerprint = await getRequestFingerprint();
+  await enforceRateLimit({
+    scope: "account:address-create",
+    key: `${user.id}|${fingerprint}`,
+    limit: 15,
+    windowMs: 10 * 60 * 1000,
+    message: "Cok fazla adres ekleme denemesi yapildi. Lutfen biraz sonra tekrar deneyin."
+  });
   const parsed = addressSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? "Adres bilgisi gecersiz");
@@ -46,6 +57,15 @@ export async function createAddressAction(formData: FormData) {
 
 export async function updateAddressAction(formData: FormData) {
   const user = await requireUser();
+  await assertTrustedMutation("account:address-update");
+  const fingerprint = await getRequestFingerprint();
+  await enforceRateLimit({
+    scope: "account:address-update",
+    key: `${user.id}|${fingerprint}`,
+    limit: 20,
+    windowMs: 10 * 60 * 1000,
+    message: "Cok fazla adres guncellemesi yapildi. Lutfen biraz sonra tekrar deneyin."
+  });
   const addressId = String(formData.get("addressId") ?? "");
   const parsed = addressSchema.safeParse(Object.fromEntries(formData));
   if (!addressId) throw new Error("Adres bulunamadi");
@@ -87,6 +107,15 @@ export async function updateAddressAction(formData: FormData) {
 
 export async function deleteAddressAction(formData: FormData) {
   const user = await requireUser();
+  await assertTrustedMutation("account:address-delete");
+  const fingerprint = await getRequestFingerprint();
+  await enforceRateLimit({
+    scope: "account:address-delete",
+    key: `${user.id}|${fingerprint}`,
+    limit: 10,
+    windowMs: 10 * 60 * 1000,
+    message: "Cok fazla adres silme denemesi yapildi. Lutfen biraz sonra tekrar deneyin."
+  });
   const addressId = String(formData.get("addressId") ?? "");
   if (!addressId) throw new Error("Adres bulunamadi");
 

@@ -1,8 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { createAdminAuditLog } from "@/lib/admin-audit";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { enforceRateLimit } from "@/lib/rate-limit";
+import { assertTrustedMutation } from "@/lib/security";
 import { createSlug } from "@/lib/slug";
 import { brandAdminSchema } from "@/lib/validators";
 
@@ -36,32 +39,70 @@ function revalidateBrandPaths() {
 }
 
 export async function createBrandAction(formData: FormData) {
-  await requireAdmin();
+  await assertTrustedMutation("admin:brand-create");
+  const admin = await requireAdmin();
+  await enforceRateLimit({
+    scope: "admin:brand-create",
+    key: admin.id,
+    limit: 20,
+    windowMs: 10 * 60 * 1000,
+    message: "Cok fazla marka islemi yapildi. Lutfen biraz sonra tekrar deneyin."
+  });
   const data = buildBrandData(formData);
   await ensureUniqueBrandSlug(data.slug);
 
-  await prisma.brand.create({ data });
+  const brand = await prisma.brand.create({ data });
+  await createAdminAuditLog({
+    action: "CREATE",
+    entityType: "BRAND",
+    entityId: brand.id,
+    summary: `Marka olusturuldu: ${brand.name}`,
+    metadata: { slug: brand.slug, isActive: brand.isActive }
+  }, { adminUserId: admin.id });
   revalidateBrandPaths();
 }
 
 export async function updateBrandAction(formData: FormData) {
-  await requireAdmin();
+  await assertTrustedMutation("admin:brand-update");
+  const admin = await requireAdmin();
+  await enforceRateLimit({
+    scope: "admin:brand-update",
+    key: admin.id,
+    limit: 30,
+    windowMs: 10 * 60 * 1000,
+    message: "Cok fazla marka islemi yapildi. Lutfen biraz sonra tekrar deneyin."
+  });
   const brandId = String(formData.get("brandId") ?? "");
   if (!brandId) throw new Error("Marka bulunamadi");
 
   const data = buildBrandData(formData);
   await ensureUniqueBrandSlug(data.slug, brandId);
 
-  await prisma.brand.update({
+  const brand = await prisma.brand.update({
     where: { id: brandId },
     data
   });
+  await createAdminAuditLog({
+    action: "UPDATE",
+    entityType: "BRAND",
+    entityId: brand.id,
+    summary: `Marka guncellendi: ${brand.name}`,
+    metadata: { slug: brand.slug, isActive: brand.isActive }
+  }, { adminUserId: admin.id });
 
   revalidateBrandPaths();
 }
 
 export async function deleteBrandAction(formData: FormData) {
-  await requireAdmin();
+  await assertTrustedMutation("admin:brand-delete");
+  const admin = await requireAdmin();
+  await enforceRateLimit({
+    scope: "admin:brand-delete",
+    key: admin.id,
+    limit: 15,
+    windowMs: 10 * 60 * 1000,
+    message: "Cok fazla marka silme islemi yapildi. Lutfen biraz sonra tekrar deneyin."
+  });
   const brandId = String(formData.get("brandId") ?? "");
   if (!brandId) throw new Error("Marka bulunamadi");
 
@@ -76,5 +117,12 @@ export async function deleteBrandAction(formData: FormData) {
   }
 
   await prisma.brand.delete({ where: { id: brandId } });
+  await createAdminAuditLog({
+    action: "DELETE",
+    entityType: "BRAND",
+    entityId: brand.id,
+    summary: `Marka silindi: ${brand.name}`,
+    metadata: { slug: brand.slug }
+  }, { adminUserId: admin.id });
   revalidateBrandPaths();
 }

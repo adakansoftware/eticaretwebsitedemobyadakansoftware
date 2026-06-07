@@ -1,9 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { createAdminAuditLog } from "@/lib/admin-audit";
 import { actionError, actionSuccess, type ActionResult } from "@/lib/action-response";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { enforceRateLimit } from "@/lib/rate-limit";
+import { assertTrustedMutation } from "@/lib/security";
 import { productAdminSchema } from "@/lib/validators";
 
 type ProductVariantInput = {
@@ -88,6 +91,7 @@ function buildProductData(formData: FormData) {
 }
 
 export async function updateOrderStatusAction(formData: FormData) {
+  await assertTrustedMutation("admin:legacy-order-update");
   const orderId = String(formData.get("orderId") ?? "");
   const status = String(formData.get("status") ?? "");
   const adminNote = String(formData.get("adminNote") ?? "");
@@ -107,7 +111,14 @@ export async function updateOrderStatusAction(formData: FormData) {
   if (!orderId) throw new Error("Siparis bulunamadi");
   if (!allowedStatuses.includes(status)) throw new Error("Gecersiz siparis durumu");
 
-  await requireAdmin();
+  const admin = await requireAdmin();
+  await enforceRateLimit({
+    scope: "admin:legacy-order-update",
+    key: admin.id,
+    limit: 30,
+    windowMs: 10 * 60 * 1000,
+    message: "Cok fazla siparis guncellemesi yapildi. Lutfen biraz sonra tekrar deneyin."
+  });
 
   await prisma.$transaction(async (tx) => {
     await tx.order.update({
@@ -126,14 +137,30 @@ export async function updateOrderStatusAction(formData: FormData) {
     }
   });
 
+  await createAdminAuditLog({
+    action: "UPDATE",
+    entityType: "ORDER",
+    entityId: orderId,
+    summary: "Legacy siparis durumu guncellendi",
+    metadata: { status, paymentStatus: paymentStatus || null }
+  }, { adminUserId: admin.id });
+
   revalidatePath("/admin/orders");
 }
 
 export async function createProductAction(formData: FormData) {
-  await requireAdmin();
+  await assertTrustedMutation("admin:legacy-product-create");
+  const admin = await requireAdmin();
+  await enforceRateLimit({
+    scope: "admin:legacy-product-create",
+    key: admin.id,
+    limit: 20,
+    windowMs: 10 * 60 * 1000,
+    message: "Cok fazla urun islemi yapildi. Lutfen biraz sonra tekrar deneyin."
+  });
   const { imageUrls, variants, productData } = buildProductData(formData);
 
-  await prisma.product.create({
+  const product = await prisma.product.create({
     data: {
       ...productData,
       images: imageUrls.length > 0
@@ -153,12 +180,28 @@ export async function createProductAction(formData: FormData) {
     }
   });
 
+  await createAdminAuditLog({
+    action: "CREATE",
+    entityType: "PRODUCT",
+    entityId: product.id,
+    summary: `Legacy urun olusturuldu: ${product.name}`,
+    metadata: { slug: product.slug, sku: product.sku, isActive: product.isActive }
+  }, { adminUserId: admin.id });
+
   revalidatePath("/admin/products");
   revalidatePath("/products");
 }
 
 export async function updateProductAction(formData: FormData) {
-  await requireAdmin();
+  await assertTrustedMutation("admin:legacy-product-update");
+  const admin = await requireAdmin();
+  await enforceRateLimit({
+    scope: "admin:legacy-product-update",
+    key: admin.id,
+    limit: 30,
+    windowMs: 10 * 60 * 1000,
+    message: "Cok fazla urun islemi yapildi. Lutfen biraz sonra tekrar deneyin."
+  });
   const productId = String(formData.get("productId") ?? "");
   if (!productId) throw new Error("Urun bulunamadi");
 
@@ -170,6 +213,7 @@ export async function updateProductAction(formData: FormData) {
 
   const { imageUrls, variants, productData } = buildProductData(formData);
 
+  const previousSlug = existing.slug;
   await prisma.product.update({
     where: { id: productId },
     data: productData
@@ -197,17 +241,42 @@ export async function updateProductAction(formData: FormData) {
     });
   }
 
+  await createAdminAuditLog({
+    action: "UPDATE",
+    entityType: "PRODUCT",
+    entityId: productId,
+    summary: `Legacy urun guncellendi: ${productData.name}`,
+    metadata: { slug: productData.slug, previousSlug, sku: productData.sku, isActive: productData.isActive }
+  }, { adminUserId: admin.id });
+
   revalidatePath("/admin/products");
   revalidatePath("/products");
   revalidatePath(`/products/${productData.slug}`);
 }
 
 export async function deleteProductAction(formData: FormData) {
-  await requireAdmin();
+  await assertTrustedMutation("admin:legacy-product-delete");
+  const admin = await requireAdmin();
+  await enforceRateLimit({
+    scope: "admin:legacy-product-delete",
+    key: admin.id,
+    limit: 15,
+    windowMs: 10 * 60 * 1000,
+    message: "Cok fazla urun silme islemi yapildi. Lutfen biraz sonra tekrar deneyin."
+  });
   const productId = String(formData.get("productId") ?? "");
   if (!productId) throw new Error("Urun bulunamadi");
 
+  const product = await prisma.product.findUnique({ where: { id: productId } });
   await prisma.product.delete({ where: { id: productId } });
+
+  await createAdminAuditLog({
+    action: "DELETE",
+    entityType: "PRODUCT",
+    entityId: productId,
+    summary: `Legacy urun silindi: ${product?.name ?? productId}`,
+    metadata: { slug: product?.slug ?? null, sku: product?.sku ?? null }
+  }, { adminUserId: admin.id });
 
   revalidatePath("/admin/products");
   revalidatePath("/products");
