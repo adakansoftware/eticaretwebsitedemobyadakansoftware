@@ -6,6 +6,7 @@ import { getEnvHealthIndicatorsFromConfig, summarizeHealth } from "../lib/health
 import { formatMoney } from "../lib/money.ts";
 import { buildTrustedOrigins, isTrustedOriginRequest, parseTrustedOrigins } from "../lib/origin.ts";
 import { detectOrderAnomalies } from "../lib/order-anomalies-core.ts";
+import { detectTimedOutWaitingPaymentOrders } from "../lib/order-timeout-core.ts";
 import { summarizeOpsStatus } from "../lib/ops-core.ts";
 import { createSlug } from "../lib/slug.ts";
 
@@ -221,6 +222,47 @@ async function main() {
           anomalies[1]?.reasons.includes("shipping_status_missing_tracking"),
           true
         );
+      }
+    },
+    {
+      name: "waiting payment timeout detector finds only overdue bank transfer orders",
+      run: () => {
+        const timedOutOrders = detectTimedOutWaitingPaymentOrders(
+          [
+            {
+              orderId: "order-1",
+              orderNumber: "ADK-1",
+              status: "WAITING_PAYMENT",
+              paymentMethod: "BANK_TRANSFER",
+              paymentStatus: "WAITING",
+              createdAt: new Date("2026-06-06T08:00:00.000Z"),
+              inventoryRestoredAt: null
+            },
+            {
+              orderId: "order-2",
+              orderNumber: "ADK-2",
+              status: "WAITING_PAYMENT",
+              paymentMethod: "CASH_ON_DELIVERY",
+              paymentStatus: "WAITING",
+              createdAt: new Date("2026-06-06T08:00:00.000Z"),
+              inventoryRestoredAt: null
+            },
+            {
+              orderId: "order-3",
+              orderNumber: "ADK-3",
+              status: "WAITING_PAYMENT",
+              paymentMethod: "BANK_TRANSFER",
+              paymentStatus: "CONFIRMED",
+              createdAt: new Date("2026-06-06T08:00:00.000Z"),
+              inventoryRestoredAt: null
+            }
+          ],
+          24,
+          new Date("2026-06-07T12:30:00.000Z")
+        );
+
+        assert.equal(timedOutOrders.length, 1);
+        assert.equal(timedOutOrders[0]?.orderId, "order-1");
       }
     }
   ];

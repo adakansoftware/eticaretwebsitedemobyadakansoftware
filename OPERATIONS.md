@@ -55,6 +55,27 @@ Bu rapor ÅŸunlarÄ± ayrÄ±ÅŸtÄ±rÄ±r:
 - inventory restore iÅŸareti eksik iptal / iade
 - payment kaydÄ± eksik havale sipariÅŸi
 
+Zaman aÅŸÄ±mÄ±na dÃ¼ÅŸen havale sipariÅŸleri iÃ§in dry-run:
+
+```powershell
+npm run ops:orders:timeout:dry
+```
+
+GerÃ§ek uygulama:
+
+```powershell
+npm run ops:orders:timeout:apply
+```
+
+Bu komut yalnÄ±zca:
+
+- `WAITING_PAYMENT`
+- `BANK_TRANSFER`
+- timeout eÅŸiÄŸini aÅŸmÄ±ÅŸ
+- stok geri yÃ¼klemesi daha Ã¶nce yapÄ±lmamÄ±ÅŸ
+
+sipariÅŸleri otomatik `CANCELLED` durumuna alÄ±r ve stoklarÄ± geri yazar.
+
 ## Cleanup / retention
 
 Ön izleme:
