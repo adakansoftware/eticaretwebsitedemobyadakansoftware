@@ -3,6 +3,7 @@
 import { randomBytes } from "node:crypto";
 import { redirect } from "next/navigation";
 import { actionError, actionSuccess, type ActionResult } from "@/lib/action-response";
+import { mergeSessionCartIntoUserCart } from "@/lib/cart";
 import { sendPasswordResetEmail } from "@/lib/emails/password-reset";
 import { prisma } from "@/lib/prisma";
 import { createSession, hashPassword, verifyPassword, clearSession, requireUser } from "@/lib/auth";
@@ -45,6 +46,14 @@ export async function registerAction(formData: FormData) {
       passwordHash: await hashPassword(parsed.data.password)
     }
   });
+
+  try {
+    await mergeSessionCartIntoUserCart(user.id);
+  } catch (error) {
+    await logError("auth.register_cart_merge_failed", error, {
+      userId: user.id
+    });
+  }
 
   await createSession({ userId: user.id, email: user.email, role: user.role });
   redirect("/");
@@ -96,6 +105,15 @@ async function authenticateUser(formData: FormData, scope: "customer" | "admin")
 export async function customerLoginAction(formData: FormData) {
   await assertTrustedMutation("auth:customer-login");
   const user = await authenticateUser(formData, "customer");
+
+  try {
+    await mergeSessionCartIntoUserCart(user.id);
+  } catch (error) {
+    await logError("auth.customer_login_cart_merge_failed", error, {
+      userId: user.id
+    });
+  }
+
   await createSession({ userId: user.id, email: user.email, role: user.role });
   redirect("/");
 }

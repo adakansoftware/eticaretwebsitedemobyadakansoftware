@@ -2,6 +2,8 @@ import { SignJWT, jwtVerify } from "jose";
 import { env } from "@/lib/env";
 
 const orderAccessSecret = new TextEncoder().encode(env.AUTH_SECRET);
+const orderAccessIssuer = new URL(env.NEXT_PUBLIC_SITE_URL).origin;
+const orderAccessAudience = "adakan-guest-order-access";
 
 type OrderAccessPayload = {
   orderId: string;
@@ -12,13 +14,18 @@ export async function createGuestOrderAccessToken(orderId: string) {
   return new SignJWT({ orderId, mode: "guest-order-access" } satisfies OrderAccessPayload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
+    .setIssuer(orderAccessIssuer)
+    .setAudience(orderAccessAudience)
     .setExpirationTime("7d")
     .sign(orderAccessSecret);
 }
 
 export async function verifyGuestOrderAccessToken(token: string, orderId: string) {
   try {
-    const { payload } = await jwtVerify(token, orderAccessSecret);
+    const { payload } = await jwtVerify(token, orderAccessSecret, {
+      issuer: orderAccessIssuer,
+      audience: orderAccessAudience
+    });
     return payload.mode === "guest-order-access" && payload.orderId === orderId;
   } catch {
     return false;

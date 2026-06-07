@@ -1,5 +1,6 @@
 "use server";
 
+import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { actionError, actionSuccess, type ActionResult } from "@/lib/action-response";
 import { calculateCartTotals, getCart, getOrCreateCart } from "@/lib/cart";
@@ -15,6 +16,67 @@ import {
 function revalidateCartSurface() {
   revalidatePath("/cart");
   revalidatePath("/checkout");
+}
+
+async function upsertCartLineQuantity(
+  cartId: string,
+  productId: string,
+  variantId: string | null,
+  incrementBy: number,
+  stockLimit: number
+) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const existingItem = await prisma.cartItem.findFirst({
+      where: {
+        cartId,
+        productId,
+        variantId
+      }
+    });
+
+    const nextQuantity = (existingItem?.quantity ?? 0) + incrementBy;
+    if (nextQuantity > stockLimit) {
+      throw new Error("Sepetteki toplam adet stoktan fazla olamaz");
+    }
+
+    if (existingItem) {
+      const updated = await prisma.cartItem.updateMany({
+        where: {
+          id: existingItem.id,
+          quantity: existingItem.quantity
+        },
+        data: {
+          quantity: nextQuantity
+        }
+      });
+
+      if (updated.count > 0) {
+        return;
+      }
+
+      continue;
+    }
+
+    try {
+      await prisma.cartItem.create({
+        data: {
+          cartId,
+          productId,
+          variantId,
+          quantity: incrementBy
+        }
+      });
+      return;
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+        continue;
+      }
+
+      throw error;
+    }
+  }
+
+  throw new Error("Sepet satiri guncellenirken eszamanli bir cakisma olustu. Lutfen tekrar dene.");
 }
 
 async function getActiveCartId() {
@@ -60,34 +122,20 @@ export async function addToCartAction(
   }
 
   const cart = await getOrCreateCart();
-  const existingItem = await prisma.cartItem.findFirst({
-    where: {
-      cartId: cart.id,
-      productId: parsed.data.productId,
-      variantId: variant?.id ?? null
-    }
-  });
-
-  const nextQuantity = (existingItem?.quantity ?? 0) + parsed.data.quantity;
   const stockLimit = variant?.stock ?? product.stock;
-  if (nextQuantity > stockLimit) {
-    return actionError("Sepetteki toplam adet stoktan fazla olamaz");
-  }
 
-  if (existingItem) {
-    await prisma.cartItem.update({
-      where: { id: existingItem.id },
-      data: { quantity: nextQuantity }
-    });
-  } else {
-    await prisma.cartItem.create({
-      data: {
-        cartId: cart.id,
-        productId: parsed.data.productId,
-        variantId: variant?.id ?? null,
-        quantity: parsed.data.quantity
-      }
-    });
+  try {
+    await upsertCartLineQuantity(
+      cart.id,
+      parsed.data.productId,
+      variant?.id ?? null,
+      parsed.data.quantity,
+      stockLimit
+    );
+  } catch (error) {
+    return actionError(
+      error instanceof Error ? error.message : "Sepet satiri guncellenemedi"
+    );
   }
 
   revalidateCartSurface();

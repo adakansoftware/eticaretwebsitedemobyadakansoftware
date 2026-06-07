@@ -23,6 +23,10 @@ const cartInclude = {
 
 export type CartWithItems = Prisma.CartGetPayload<{ include: typeof cartInclude }>;
 
+function buildCartItemKey(productId: string, variantId?: string | null) {
+  return `${productId}:${variantId ?? "base"}`;
+}
+
 function createEmptyCart(): CartWithItems {
   return {
     id: "",
@@ -59,19 +63,125 @@ export async function getOrCreateCartSessionId() {
 }
 
 async function findOrCreateCart(where: { userId: string } | { sessionId: string }) {
-  let cart = await prisma.cart.findFirst({
+  const existingCart = await prisma.cart.findFirst({
     where,
     include: cartInclude
   });
 
-  if (!cart) {
-    cart = await prisma.cart.create({
+  if (existingCart) {
+    return existingCart;
+  }
+
+  try {
+    return await prisma.cart.create({
       data: where,
       include: cartInclude
     });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return prisma.cart.findFirstOrThrow({
+        where,
+        include: cartInclude
+      });
+    }
+
+    throw error;
+  }
+}
+
+export async function mergeSessionCartIntoUserCart(userId: string) {
+  const sessionId = await readCartSessionId();
+  if (!sessionId) {
+    return;
   }
 
-  return cart;
+  await prisma.$transaction(
+    async (tx) => {
+      const [guestCart, userCart] = await Promise.all([
+        tx.cart.findFirst({
+          where: { sessionId },
+          include: cartInclude
+        }),
+        tx.cart.findFirst({
+          where: { userId },
+          include: cartInclude
+        })
+      ]);
+
+      if (!guestCart || guestCart.userId === userId) {
+        return;
+      }
+
+      if (!userCart) {
+        await tx.cart.update({
+          where: { id: guestCart.id },
+          data: {
+            userId,
+            sessionId: null
+          }
+        });
+        return;
+      }
+
+      const userItemsByKey = new Map(
+        userCart.items.map((item) => [buildCartItemKey(item.productId, item.variantId), item])
+      );
+
+      for (const guestItem of guestCart.items) {
+        const itemKey = buildCartItemKey(guestItem.productId, guestItem.variantId);
+        const matchingUserItem = userItemsByKey.get(itemKey);
+        const stockLimit = guestItem.variant?.stock ?? guestItem.product.stock;
+        const mergedQuantity = Math.min(
+          (matchingUserItem?.quantity ?? 0) + guestItem.quantity,
+          Math.max(stockLimit, 0)
+        );
+
+        if (mergedQuantity <= 0) {
+          continue;
+        }
+
+        if (matchingUserItem) {
+          await tx.cartItem.update({
+            where: { id: matchingUserItem.id },
+            data: { quantity: mergedQuantity }
+          });
+          continue;
+        }
+
+        const createdItem = await tx.cartItem.create({
+          data: {
+            cartId: userCart.id,
+            productId: guestItem.productId,
+            variantId: guestItem.variantId,
+            quantity: mergedQuantity
+          }
+        });
+
+        userItemsByKey.set(itemKey, {
+          ...guestItem,
+          id: createdItem.id,
+          cartId: userCart.id,
+          quantity: mergedQuantity,
+          createdAt: createdItem.createdAt,
+          updatedAt: createdItem.updatedAt
+        });
+      }
+
+      await tx.cart.update({
+        where: { id: userCart.id },
+        data: {
+          couponCode: userCart.couponCode ?? guestCart.couponCode ?? null
+        }
+      });
+
+      await tx.cart.delete({
+        where: { id: guestCart.id }
+      });
+    },
+    {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable
+    }
+  );
 }
 
 export async function getCart(): Promise<CartWithItems> {
