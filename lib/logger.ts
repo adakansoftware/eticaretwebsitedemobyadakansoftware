@@ -1,4 +1,5 @@
 import { getRequestContext } from "@/lib/request-context";
+import { redactLogValue } from "@/lib/log-redaction";
 
 type LogLevel = "info" | "warn" | "error";
 
@@ -20,6 +21,7 @@ export async function logEvent(
   payload: Record<string, unknown> = {}
 ) {
   const context = await getRequestContext();
+  const redactedPayload = redactLogValue(payload);
   const message = JSON.stringify({
     level,
     event,
@@ -29,7 +31,7 @@ export async function logEvent(
     ip: context.ip,
     userAgent: context.userAgent,
     timestamp: new Date().toISOString(),
-    ...payload
+    ...(redactedPayload && typeof redactedPayload === "object" ? redactedPayload : {})
   });
 
   if (level === "error") {

@@ -32,6 +32,18 @@ HÄ±zlÄ± operasyon Ã¶zeti:
 npm run ops:status
 ```
 
+CI / cron iÃ§in fail-fast assert:
+
+```powershell
+npm run ops:assert
+```
+
+BirleÅŸik incident raporu:
+
+```powershell
+npm run ops:report
+```
+
 Bu Ã¶zet ÅŸu sinyalleri raporlar:
 
 - dÃ¼ÅŸÃ¼k stokta aktif Ã¼rÃ¼n sayÄ±sÄ±

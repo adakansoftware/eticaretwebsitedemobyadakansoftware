@@ -5,6 +5,7 @@ import { toCsvContent, toCsvRow } from "../lib/csv.ts";
 import { getEnvHealthIndicatorsFromConfig, summarizeHealth } from "../lib/health-core.ts";
 import { formatMoney } from "../lib/money.ts";
 import { buildTrustedOrigins, isTrustedOriginRequest, parseTrustedOrigins } from "../lib/origin.ts";
+import { redactLogValue } from "../lib/log-redaction.ts";
 import { detectOrderAnomalies } from "../lib/order-anomalies-core.ts";
 import { detectTimedOutWaitingPaymentOrders } from "../lib/order-timeout-core.ts";
 import { summarizeOpsStatus } from "../lib/ops-core.ts";
@@ -276,6 +277,28 @@ async function main() {
 
         assert.equal(timedOutOrders.length, 1);
         assert.equal(timedOutOrders[0]?.orderId, "order-1");
+      }
+    },
+    {
+      name: "log redaction masks secrets and tokens",
+      run: () => {
+        const redacted = redactLogValue({
+          password: "SuperSecret12345",
+          nested: {
+            authSecret: "abcdefghijklmnopqrstuvwxyz",
+            safe: "visible"
+          },
+          resetToken: "1234567890abcdef"
+        }) as {
+          password: string;
+          nested: { authSecret: string; safe: string };
+          resetToken: string;
+        };
+
+        assert.equal(redacted.password.includes("[REDACTED]") || redacted.password.includes("***"), true);
+        assert.equal(redacted.nested.authSecret.includes("***"), true);
+        assert.equal(redacted.nested.safe, "visible");
+        assert.equal(redacted.resetToken.includes("***"), true);
       }
     }
   ];

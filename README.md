@@ -44,6 +44,8 @@ npm run build
 npm run verify
 npm run e2e
 npm run ops:preflight
+npm run ops:assert
+npm run ops:report
 npm run ops:cleanup:dry
 ```
 
