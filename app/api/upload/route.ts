@@ -1,22 +1,24 @@
+import { buildApiHeaders } from "@/lib/api-response";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { logError } from "@/lib/logger";
 import { enforceRateLimit, getRequestFingerprint } from "@/lib/rate-limit";
 import { getRequestId } from "@/lib/request-context";
 import { assertTrustedMutation } from "@/lib/security";
-import { uploadFile } from "@/lib/upload";
+import { MAX_UPLOAD_REQUEST_SIZE, uploadFile } from "@/lib/upload";
 
 const allowedFolders = new Set(["products", "banners", "brands", "categories"]);
 
 export async function POST(request: Request) {
   const requestId = await getRequestId();
+  const contentLength = Number(request.headers.get("content-length") ?? 0);
 
   try {
     await assertTrustedMutation("admin:upload");
   } catch (error) {
     return NextResponse.json(
       { message: error instanceof Error ? error.message : "Yetkisiz istek", requestId },
-      { status: 403, headers: { "x-request-id": requestId } }
+      { status: 403, headers: buildApiHeaders(requestId) }
     );
   }
 
@@ -25,7 +27,7 @@ export async function POST(request: Request) {
   if (!currentUser || currentUser.role !== "ADMIN") {
     return NextResponse.json(
       { message: "Yetkisiz erisim", requestId },
-      { status: 403, headers: { "x-request-id": requestId } }
+      { status: 403, headers: buildApiHeaders(requestId) }
     );
   }
 
@@ -35,7 +37,14 @@ export async function POST(request: Request) {
   if (!allowedFolders.has(folder)) {
     return NextResponse.json(
       { message: "Gecersiz yukleme alani", requestId },
-      { status: 400, headers: { "x-request-id": requestId } }
+      { status: 400, headers: buildApiHeaders(requestId) }
+    );
+  }
+
+  if (contentLength > MAX_UPLOAD_REQUEST_SIZE) {
+    return NextResponse.json(
+      { message: "Istek boyutu siniri asildi.", requestId },
+      { status: 413, headers: buildApiHeaders(requestId) }
     );
   }
 
@@ -57,7 +66,7 @@ export async function POST(request: Request) {
             : "Yukleme limiti asildi. Lutfen daha sonra tekrar deneyin.",
         requestId
       },
-      { status: 429, headers: { "x-request-id": requestId } }
+      { status: 429, headers: buildApiHeaders(requestId) }
     );
   }
 
@@ -67,7 +76,7 @@ export async function POST(request: Request) {
   if (files.length !== 1) {
     return NextResponse.json(
       { message: "Tek seferde yalnizca bir dosya yuklenebilir.", requestId },
-      { status: 400, headers: { "x-request-id": requestId } }
+      { status: 400, headers: buildApiHeaders(requestId) }
     );
   }
 
@@ -76,13 +85,13 @@ export async function POST(request: Request) {
   if (!(file instanceof File)) {
     return NextResponse.json(
       { message: "Gecerli bir dosya secilmedi.", requestId },
-      { status: 400, headers: { "x-request-id": requestId } }
+      { status: 400, headers: buildApiHeaders(requestId) }
     );
   }
 
   try {
     const url = await uploadFile(file, folder);
-    return NextResponse.json({ url, requestId }, { headers: { "x-request-id": requestId } });
+    return NextResponse.json({ url, requestId }, { headers: buildApiHeaders(requestId) });
   } catch (error) {
     await logError("admin.upload_failed", error, {
       adminUserId: currentUser.id,
@@ -94,7 +103,7 @@ export async function POST(request: Request) {
           error instanceof Error ? error.message : "Dosya yuklenemedi. Lutfen tekrar deneyin.",
         requestId
       },
-      { status: 400, headers: { "x-request-id": requestId } }
+      { status: 400, headers: buildApiHeaders(requestId) }
     );
   }
 }

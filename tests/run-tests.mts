@@ -10,6 +10,7 @@ import { detectOrderAnomalies } from "../lib/order-anomalies-core.ts";
 import { detectTimedOutWaitingPaymentOrders } from "../lib/order-timeout-core.ts";
 import { summarizeOpsStatus } from "../lib/ops-core.ts";
 import { createSlug } from "../lib/slug.ts";
+import { MAX_FILE_SIZE, MAX_UPLOAD_REQUEST_SIZE, detectUploadExtension } from "../lib/upload.ts";
 
 async function main() {
   const checks: Array<{ name: string; run: () => void | Promise<void> }> = [
@@ -332,6 +333,40 @@ async function main() {
         assert.equal(redacted.nested.authSecret.includes("***"), true);
         assert.equal(redacted.nested.safe, "visible");
         assert.equal(redacted.resetToken.includes("***"), true);
+      }
+    },
+    {
+      name: "upload detector accepts valid png signature",
+      run: async () => {
+        const pngFile = new File(
+          [new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x00, 0x00, 0x00, 0x00])],
+          "image.png",
+          { type: "image/png" }
+        );
+
+        const result = await detectUploadExtension(pngFile);
+        assert.equal(result.extension, "png");
+      }
+    },
+    {
+      name: "upload detector rejects spoofed mime type",
+      run: async () => {
+        const fakePng = new File(
+          [new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10])],
+          "image.png",
+          { type: "image/png" }
+        );
+
+        await assert.rejects(
+          () => detectUploadExtension(fakePng),
+          /Dosya icerigi bildirilen gorsel turu ile eslesmiyor/
+        );
+      }
+    },
+    {
+      name: "upload limits keep request envelope above file size cap",
+      run: () => {
+        assert.equal(MAX_UPLOAD_REQUEST_SIZE > MAX_FILE_SIZE, true);
       }
     }
   ];
