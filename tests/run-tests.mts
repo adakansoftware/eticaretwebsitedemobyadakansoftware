@@ -5,6 +5,7 @@ import { toCsvContent, toCsvRow } from "../lib/csv.ts";
 import { getEnvHealthIndicatorsFromConfig, summarizeHealth } from "../lib/health-core.ts";
 import { formatMoney } from "../lib/money.ts";
 import { buildTrustedOrigins, isTrustedOriginRequest, parseTrustedOrigins } from "../lib/origin.ts";
+import { summarizeOpsStatus } from "../lib/ops-core.ts";
 import { createSlug } from "../lib/slug.ts";
 
 async function main() {
@@ -153,6 +154,26 @@ async function main() {
         });
         assert.equal(indicators.some((indicator) => indicator.name === "auth_secret"), true);
         assert.equal(indicators.some((indicator) => indicator.name === "smtp"), true);
+      }
+    },
+    {
+      name: "ops status summary warns for low stock and stuck orders",
+      run: () => {
+        const summary = summarizeOpsStatus({
+          lowStockProducts: 2,
+          stuckOrders: 1,
+          recentRateLimitBlocks: 3,
+          rateLimitAlertThreshold: 2,
+          expiredPasswordResetTokens: 0,
+          staleReplayGuards: 0,
+          missingSiteSettings: false,
+          missingAdminUsers: false
+        });
+
+        assert.equal(summary.ok, false);
+        assert.equal(summary.signals.find((signal) => signal.name === "low_stock")?.ok, false);
+        assert.equal(summary.signals.find((signal) => signal.name === "stuck_orders")?.ok, false);
+        assert.equal(summary.signals.find((signal) => signal.name === "rate_limit_blocks")?.ok, false);
       }
     }
   ];

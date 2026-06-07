@@ -6,6 +6,7 @@ const repoRoot = process.cwd();
 const ignoredDirs = new Set([".git", ".next", "node_modules", "playwright-report", "test-results"]);
 const suspiciousPatterns = ["TO" + "DO", "FIX" + "ME", "\uFFFD"];
 const findings: Array<{ file: string; pattern: string }> = [];
+const migrationNames: string[] = [];
 
 async function walk(dir: string): Promise<void> {
   const entries = await fs.readdir(dir, { withFileTypes: true });
@@ -15,6 +16,9 @@ async function walk(dir: string): Promise<void> {
 
     const fullPath = path.join(dir, entry.name);
     if (entry.isDirectory()) {
+      if (path.relative(repoRoot, dir) === "prisma\\migrations" || path.relative(repoRoot, dir) === "prisma/migrations") {
+        migrationNames.push(entry.name);
+      }
       await walk(fullPath);
       continue;
     }
@@ -30,8 +34,20 @@ async function walk(dir: string): Promise<void> {
   }
 }
 
+function validateMigrationNames() {
+  for (const name of migrationNames) {
+    if (!/^\d{14}_[a-z0-9_]+$/.test(name)) {
+      findings.push({
+        file: path.join("prisma", "migrations", name),
+        pattern: "invalid-migration-name"
+      });
+    }
+  }
+}
+
 async function main() {
   await walk(repoRoot);
+  validateMigrationNames();
 
   if (findings.length > 0) {
     console.error("Preflight failed.");

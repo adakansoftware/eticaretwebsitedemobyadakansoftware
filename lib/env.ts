@@ -10,6 +10,9 @@ const envSchema = z.object({
   RATE_LIMIT_RETENTION_DAYS: z.coerce.number().int().positive().default(7),
   PASSWORD_RESET_RETENTION_HOURS: z.coerce.number().int().positive().default(24),
   REPLAY_GUARD_RETENTION_HOURS: z.coerce.number().int().positive().default(24),
+  LOW_STOCK_ALERT_THRESHOLD: z.coerce.number().int().nonnegative().default(5),
+  OPS_STUCK_ORDER_MINUTES: z.coerce.number().int().positive().default(120),
+  OPS_RATE_LIMIT_ALERT_COUNT: z.coerce.number().int().positive().default(10),
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().int().positive().default(587),
   SMTP_SECURE: z

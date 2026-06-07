@@ -53,6 +53,7 @@ npm run ops:cleanup:dry
 
 - `GET /api/health/live`
 - `GET /api/health/ready`
+- `GET /api/health/ops`
 
 `ready` çıktısı env, veritabanı ve kritik tablo kontrollerini döner. Yanıtlar `x-request-id` header’ı taşır.
 

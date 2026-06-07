@@ -22,6 +22,25 @@
 7. `GET /api/health/live`
 8. `GET /api/health/ready`
 
+9. `npm run ops:status`
+
+## Ops status
+
+HÄ±zlÄ± operasyon Ã¶zeti:
+
+```powershell
+npm run ops:status
+```
+
+Bu Ã¶zet ÅŸu sinyalleri raporlar:
+
+- dÃ¼ÅŸÃ¼k stokta aktif Ã¼rÃ¼n sayÄ±sÄ±
+- beklenenden uzun sÃ¼re aÃ§Ä±k kalan sipariÅŸler
+- son penceredeki rate-limit blok olayÄ± sayÄ±sÄ±
+- temizlenmemiÅŸ password reset token kayÄ±tlarÄ±
+- temizlenmemiÅŸ replay guard kayÄ±tlarÄ±
+- site settings ve admin kullanÄ±cÄ± varlÄ±ÄŸÄ±
+
 ## Cleanup / retention
 
 Ön izleme:
