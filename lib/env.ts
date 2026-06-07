@@ -45,7 +45,18 @@ const envSchema = z.object({
     .transform((value) => value === true || value === "true"),
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
-  SMTP_FROM: z.string().optional()
+  SMTP_FROM: z.string().optional(),
+  UPLOAD_STORAGE_DRIVER: z.enum(["local", "s3"]).default("local"),
+  UPLOAD_PUBLIC_BASE_URL: z.string().url().optional().or(z.literal("")),
+  UPLOAD_S3_BUCKET: z.string().optional(),
+  UPLOAD_S3_REGION: z.string().optional(),
+  UPLOAD_S3_ENDPOINT: z.string().url().optional().or(z.literal("")),
+  UPLOAD_S3_ACCESS_KEY_ID: z.string().optional(),
+  UPLOAD_S3_SECRET_ACCESS_KEY: z.string().optional(),
+  UPLOAD_S3_FORCE_PATH_STYLE: z
+    .union([z.boolean(), z.string()])
+    .optional()
+    .transform((value) => value === true || value === "true")
 }).superRefine((value, ctx) => {
   const smtpValues = [value.SMTP_HOST, value.SMTP_USER, value.SMTP_PASS, value.SMTP_FROM];
   const configuredSmtpFields = smtpValues.filter(Boolean).length;
@@ -77,6 +88,25 @@ const envSchema = z.object({
       path: ["BACKUP_DRILL_DATABASE_URL"],
       message: "Restore tatbikati icin kaynak backup veritabani da tanimlanmali"
     });
+  }
+
+  if (value.UPLOAD_STORAGE_DRIVER === "s3") {
+    const s3Values = [
+      value.UPLOAD_S3_BUCKET,
+      value.UPLOAD_S3_REGION,
+      value.UPLOAD_S3_ACCESS_KEY_ID,
+      value.UPLOAD_S3_SECRET_ACCESS_KEY
+    ];
+    const configuredS3Fields = s3Values.filter(Boolean).length;
+
+    if (configuredS3Fields < s3Values.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["UPLOAD_S3_BUCKET"],
+        message:
+          "S3 upload driver secildiginde bucket, region, access key ve secret key birlikte tanimlanmali"
+      });
+    }
   }
 });
 

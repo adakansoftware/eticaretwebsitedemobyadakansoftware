@@ -14,7 +14,13 @@ import { summarizeOpsStatus } from "../lib/ops-core.ts";
 import { buildNextOutboxAvailability } from "../lib/outbox-core.ts";
 import { buildAdditionalSecurityHeaders } from "../lib/security-headers.ts";
 import { createSlug } from "../lib/slug.ts";
-import { MAX_FILE_SIZE, MAX_UPLOAD_REQUEST_SIZE, detectUploadExtension } from "../lib/upload.ts";
+import {
+  buildSignedS3PutRequest,
+  buildUploadObjectKey,
+  resolveS3ObjectTarget,
+  sanitizeUploadFolder
+} from "../lib/upload-storage-core.ts";
+import { MAX_FILE_SIZE, MAX_UPLOAD_REQUEST_SIZE, detectUploadExtension } from "../lib/upload-core.ts";
 
 async function main() {
   const checks: Array<{ name: string; run: () => void | Promise<void> }> = [
@@ -237,10 +243,14 @@ async function main() {
           smtpUser: "mailer",
           smtpPass: "secret",
           smtpFrom: "noreply@example.com",
+          uploadStorageDriver: "s3",
+          uploadPublicBaseUrl: "https://cdn.example.com/uploads/",
+          uploadS3Region: "eu-central-1",
           nodeEnv: "development"
         });
         assert.equal(indicators.some((indicator) => indicator.name === "auth_secret"), true);
         assert.equal(indicators.some((indicator) => indicator.name === "smtp"), true);
+        assert.equal(indicators.some((indicator) => indicator.name === "upload_storage"), true);
       }
     },
     {
@@ -421,6 +431,59 @@ async function main() {
       name: "upload limits keep request envelope above file size cap",
       run: () => {
         assert.equal(MAX_UPLOAD_REQUEST_SIZE > MAX_FILE_SIZE, true);
+      }
+    },
+    {
+      name: "upload folder sanitizer rejects traversal segments",
+      run: () => {
+        assert.throws(() => sanitizeUploadFolder("../private"), /Gecersiz yukleme klasoru/);
+      }
+    },
+    {
+      name: "upload object key keeps safe nested folder shape",
+      run: () => {
+        const objectKey = buildUploadObjectKey("products/gallery", "png", "asset-1");
+        assert.equal(objectKey, "products/gallery/asset-1.png");
+      }
+    },
+    {
+      name: "s3 target resolver supports path-style public urls",
+      run: () => {
+        const target = resolveS3ObjectTarget({
+          bucket: "commerce-assets",
+          region: "auto",
+          endpoint: "https://account.r2.cloudflarestorage.com",
+          key: "products/asset-1.png",
+          forcePathStyle: true,
+          publicBaseUrl: "https://cdn.example.com/uploads/"
+        });
+
+        assert.equal(target.url, "https://account.r2.cloudflarestorage.com/commerce-assets/products/asset-1.png");
+        assert.equal(target.publicUrl, "https://cdn.example.com/uploads/products/asset-1.png");
+      }
+    },
+    {
+      name: "signed s3 put request includes authorization scope",
+      run: () => {
+        const request = buildSignedS3PutRequest({
+          bucket: "commerce-assets",
+          region: "eu-central-1",
+          key: "products/asset-1.png",
+          accessKeyId: "AKIATESTKEY",
+          secretAccessKey: "test-secret-key",
+          body: new Uint8Array([1, 2, 3, 4]),
+          contentType: "image/png",
+          now: new Date("2026-06-07T18:00:00.000Z")
+        });
+
+        assert.equal(request.url, "https://commerce-assets.s3.eu-central-1.amazonaws.com/products/asset-1.png");
+        assert.equal(
+          request.headers.authorization.includes(
+            "Credential=AKIATESTKEY/20260607/eu-central-1/s3/aws4_request"
+          ),
+          true
+        );
+        assert.equal(typeof request.headers["x-amz-content-sha256"], "string");
       }
     },
     {

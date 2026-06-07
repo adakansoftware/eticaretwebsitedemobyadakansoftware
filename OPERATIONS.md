@@ -6,6 +6,7 @@
 - `TRUSTED_ORIGINS` includes real deployment domains
 - `NEXT_PUBLIC_SITE_URL` points to the live origin
 - SMTP credentials have been tested
+- upload storage driver and object storage credentials have been verified if `UPLOAD_STORAGE_DRIVER=s3`
 - `npx prisma migrate deploy` has completed successfully
 - the latest `npm run verify` and `npm run e2e` have passed
 - backup and restore procedures are documented and reachable
@@ -137,3 +138,4 @@ Cleanup covers:
 - for admin operation incidents, correlate logs with `AdminAuditLog.requestId`
 - for abuse spikes, inspect `ActionRateLimit` by scope
 - for CSP rollout, review report-only findings before moving to enforced mode
+- for object storage rollout, validate `UPLOAD_PUBLIC_BASE_URL` and external image host allowlist together

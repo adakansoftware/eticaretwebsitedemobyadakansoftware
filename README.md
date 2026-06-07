@@ -16,6 +16,7 @@ This repository is no longer a storefront-only demo. It is structured as a produ
 - Unified `verify` pipeline
 - Behavior tests plus Playwright E2E coverage
 - Report-only CSP and stronger security headers ready for production rollout
+- Local-or-S3-compatible upload storage abstraction
 
 ## Stack
 
@@ -70,6 +71,7 @@ npm run ops:cleanup:dry
 - Admin mutations pass through auth, trusted-origin, and rate-limit checks
 - Checkout creation uses a replay guard against duplicate submits
 - Security headers include HSTS in production and CSP in report-only mode by default
+- Upload storage can stay local or move to an S3-compatible provider through env only
 
 ## Sentry and deploy
 
