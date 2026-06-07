@@ -30,7 +30,8 @@ async function main() {
       inventoryRestoredAt: order.inventoryRestoredAt
     })),
     {
-      stuckOrderMinutes: env.OPS_STUCK_ORDER_MINUTES
+      stuckOrderMinutes: env.OPS_STUCK_ORDER_MINUTES,
+      waitingPaymentTimeoutHours: env.WAITING_PAYMENT_TIMEOUT_HOURS
     }
   ).map((anomaly) => {
     const matchingOrder = orders.find((order) => order.id === anomaly.orderId);
@@ -68,7 +69,8 @@ async function main() {
       {
         observedAt: new Date().toISOString(),
         thresholds: {
-          stuckOrderMinutes: env.OPS_STUCK_ORDER_MINUTES
+          stuckOrderMinutes: env.OPS_STUCK_ORDER_MINUTES,
+          waitingPaymentTimeoutHours: env.WAITING_PAYMENT_TIMEOUT_HOURS
         },
         totalOrdersScanned: orders.length,
         anomalyCount: anomalies.length,

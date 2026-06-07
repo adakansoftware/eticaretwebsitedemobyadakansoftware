@@ -7,6 +7,9 @@ import { prisma } from "../lib/prisma.ts";
 async function main() {
   const now = new Date();
   const stuckBefore = new Date(now.getTime() - env.OPS_STUCK_ORDER_MINUTES * 60 * 1000);
+  const waitingPaymentTimeoutBefore = new Date(
+    now.getTime() - env.WAITING_PAYMENT_TIMEOUT_HOURS * 60 * 60 * 1000
+  );
   const passwordResetBefore = new Date(
     now.getTime() - env.PASSWORD_RESET_RETENTION_HOURS * 60 * 60 * 1000
   );
@@ -44,12 +47,23 @@ async function main() {
     }),
     prisma.order.count({
       where: {
-        status: {
-          in: ["PENDING", "WAITING_PAYMENT", "PAID", "PREPARING"]
-        },
-        createdAt: {
-          lt: stuckBefore
-        }
+        OR: [
+          {
+            status: {
+              in: ["PENDING", "PAID", "PREPARING"]
+            },
+            createdAt: {
+              lt: stuckBefore
+            }
+          },
+          {
+            status: "WAITING_PAYMENT",
+            paymentMethod: "BANK_TRANSFER",
+            createdAt: {
+              lt: waitingPaymentTimeoutBefore
+            }
+          }
+        ]
       }
     }),
     prisma.actionRateLimit.aggregate({
@@ -107,7 +121,8 @@ async function main() {
         thresholds: {
           lowStockAlertThreshold: env.LOW_STOCK_ALERT_THRESHOLD,
           stuckOrderMinutes: env.OPS_STUCK_ORDER_MINUTES,
-          rateLimitAlertCount: env.OPS_RATE_LIMIT_ALERT_COUNT
+          rateLimitAlertCount: env.OPS_RATE_LIMIT_ALERT_COUNT,
+          waitingPaymentTimeoutHours: env.WAITING_PAYMENT_TIMEOUT_HOURS
         }
       },
       null,

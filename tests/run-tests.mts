@@ -206,14 +206,26 @@ async function main() {
               trackingNumber: null,
               trackingCarrier: "Yurtici",
               inventoryRestoredAt: null
+            },
+            {
+              orderId: "order-3",
+              orderNumber: "ADK-SEED-1001",
+              status: "DELIVERED",
+              paymentStatus: "CONFIRMED",
+              paymentMethod: "BANK_TRANSFER",
+              createdAt: new Date("2026-06-07T09:00:00.000Z"),
+              updatedAt: new Date("2026-06-07T09:30:00.000Z"),
+              trackingNumber: null,
+              trackingCarrier: null,
+              inventoryRestoredAt: null
             }
           ],
-          { stuckOrderMinutes: 120 },
+          { stuckOrderMinutes: 120, waitingPaymentTimeoutHours: 24 },
           new Date("2026-06-07T12:30:00.000Z")
         );
 
         assert.equal(anomalies.length, 2);
-        assert.equal(anomalies[0]?.reasons.includes("stuck_fulfillment_or_payment"), true);
+        assert.equal(anomalies[0]?.reasons.includes("stuck_fulfillment_or_payment"), false);
         assert.equal(
           anomalies[0]?.reasons.includes("payment_confirmed_but_order_not_progressed"),
           true
@@ -222,6 +234,7 @@ async function main() {
           anomalies[1]?.reasons.includes("shipping_status_missing_tracking"),
           true
         );
+        assert.equal(anomalies.some((anomaly) => anomaly.orderNumber === "ADK-SEED-1001"), false);
       }
     },
     {

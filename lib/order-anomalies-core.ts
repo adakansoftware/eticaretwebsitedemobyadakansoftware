@@ -19,7 +19,12 @@ export type OrderAnomaly = {
 
 type Thresholds = {
   stuckOrderMinutes: number;
+  waitingPaymentTimeoutHours: number;
 };
+
+function isSyntheticSeedOrder(orderNumber: string) {
+  return orderNumber.startsWith("ADK-SEED-");
+}
 
 export function detectOrderAnomalies(
   orders: OrderAnomalyInput[],
@@ -27,15 +32,22 @@ export function detectOrderAnomalies(
   now = new Date()
 ) {
   const stuckCutoff = now.getTime() - thresholds.stuckOrderMinutes * 60 * 1000;
+  const waitingPaymentTimeoutCutoff =
+    now.getTime() - thresholds.waitingPaymentTimeoutHours * 60 * 60 * 1000;
   const anomalies: OrderAnomaly[] = [];
 
   for (const order of orders) {
     const reasons: string[] = [];
 
-    if (
-      ["PENDING", "WAITING_PAYMENT", "PAID", "PREPARING"].includes(order.status) &&
-      order.createdAt.getTime() < stuckCutoff
-    ) {
+    const isWaitingBankTransfer =
+      order.status === "WAITING_PAYMENT" && order.paymentMethod === "BANK_TRANSFER";
+    const isGeneralStuckOrder =
+      ["PENDING", "PAID", "PREPARING"].includes(order.status) &&
+      order.createdAt.getTime() < stuckCutoff;
+    const isTimedOutWaitingPayment =
+      isWaitingBankTransfer && order.createdAt.getTime() < waitingPaymentTimeoutCutoff;
+
+    if (isGeneralStuckOrder || isTimedOutWaitingPayment) {
       reasons.push("stuck_fulfillment_or_payment");
     }
 
@@ -49,6 +61,7 @@ export function detectOrderAnomalies(
 
     if (
       ["SHIPPED", "DELIVERED"].includes(order.status) &&
+      !isSyntheticSeedOrder(order.orderNumber) &&
       (!order.trackingNumber || !order.trackingCarrier)
     ) {
       reasons.push("shipping_status_missing_tracking");
