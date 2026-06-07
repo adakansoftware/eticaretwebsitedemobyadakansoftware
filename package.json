@@ -9,19 +9,21 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types tests/run-tests.mts",
     "e2e": "playwright test",
     "e2e:headed": "playwright test --headed",
     "e2e:prepare": "npm run prisma:seed",
-    "check": "npm run lint && npm run test && npm run build",
+    "ops:preflight": "node --experimental-strip-types scripts/preflight.mts",
+    "ops:cleanup:dry": "node --experimental-strip-types scripts/ops-cleanup.mts --dry-run",
+    "ops:cleanup:apply": "node --experimental-strip-types scripts/ops-cleanup.mts --apply",
+    "verify": "npm run ops:preflight && npm run lint && npm run typecheck && npm run test && npm run build",
+    "check": "npm run verify",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:reset": "prisma migrate reset",
     "prisma:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio"
-  },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.16.2",

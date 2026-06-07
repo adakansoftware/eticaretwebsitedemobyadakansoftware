@@ -1,5 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify } from "jose";
+import { env } from "@/lib/env";
+import {
+  buildTrustedOrigins,
+  isMutatingMethod,
+  isTrustedOriginRequest,
+  parseTrustedOrigins
+} from "@/lib/origin";
+import { createRequestId, requestIdHeaderName } from "@/lib/request-context";
 
 const publicAssetPattern = /\.(?:png|jpg|jpeg|gif|webp|svg|ico|css|js|map)$/i;
 
@@ -31,13 +39,42 @@ async function verifySessionToken(token: string) {
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  const requestId = req.headers.get(requestIdHeaderName) ?? createRequestId();
+  const isServerActionRequest = req.headers.has("next-action");
+
+  const withRequestId = (response: NextResponse) => {
+    if (isServerActionRequest) {
+      return response;
+    }
+
+    response.headers.set(requestIdHeaderName, requestId);
+    return response;
+  };
+
+  if (
+    isMutatingMethod(req.method) &&
+    !isTrustedOriginRequest({
+      siteUrl: env.NEXT_PUBLIC_SITE_URL,
+      configuredOrigins: buildTrustedOrigins(
+        env.NEXT_PUBLIC_SITE_URL,
+        parseTrustedOrigins(env.TRUSTED_ORIGINS)
+      ),
+      origin: req.headers.get("origin"),
+      referer: req.headers.get("referer"),
+      host: req.headers.get("host"),
+      forwardedHost: req.headers.get("x-forwarded-host"),
+      forwardedProto: req.headers.get("x-forwarded-proto")
+    })
+  ) {
+    return withRequestId(new NextResponse("Forbidden", { status: 403 }));
+  }
 
   if (isBypassedPath(pathname)) {
-    return NextResponse.next();
+    return withRequestId(NextResponse.next());
   }
 
   if (pathname === "/admin/login") {
-    return NextResponse.redirect(new URL("/admin-login", req.url));
+    return withRequestId(NextResponse.redirect(new URL("/admin-login", req.url)));
   }
 
   const isAdminLoginPath = pathname === "/admin-login";
@@ -46,28 +83,32 @@ export async function proxy(req: NextRequest) {
   const isAccountPath = pathname.startsWith("/account");
 
   if (isAdminLoginPath || isCustomerAuthPath) {
-    return NextResponse.next();
+    return withRequestId(NextResponse.next());
   }
 
   if (!isAdminPath && !isAccountPath) {
-    return NextResponse.next();
+    return withRequestId(NextResponse.next());
   }
 
   const token = req.cookies.get("adakan_session")?.value;
   if (!token) {
-    return NextResponse.redirect(new URL(isAdminPath ? "/admin-login" : "/login", req.url));
+    return withRequestId(
+      NextResponse.redirect(new URL(isAdminPath ? "/admin-login" : "/login", req.url))
+    );
   }
 
   const payload = await verifySessionToken(token);
   if (!payload) {
-    return NextResponse.redirect(new URL(isAdminPath ? "/admin-login" : "/login", req.url));
+    return withRequestId(
+      NextResponse.redirect(new URL(isAdminPath ? "/admin-login" : "/login", req.url))
+    );
   }
 
   if (isAdminPath && payload.role !== "ADMIN") {
-    return NextResponse.redirect(new URL("/", req.url));
+    return withRequestId(NextResponse.redirect(new URL("/", req.url)));
   }
 
-  return NextResponse.next();
+  return withRequestId(NextResponse.next());
 }
 
 export const config = {

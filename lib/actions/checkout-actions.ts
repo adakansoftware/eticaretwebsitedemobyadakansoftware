@@ -1,23 +1,40 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
+import { Prisma } from "@prisma/client";
 import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth";
+import { getCart, calculateCartTotals } from "@/lib/cart";
+import { buildCheckoutReplayKey } from "@/lib/checkout-replay";
+import { getVariantUnitPrice } from "@/lib/commerce";
 import { sendAdminNewOrderEmail } from "@/lib/emails/admin-new-order";
 import { sendOrderConfirmationEmail } from "@/lib/emails/order-confirmation";
 import { env } from "@/lib/env";
-import { prisma } from "@/lib/prisma";
-import { getCart, calculateCartTotals } from "@/lib/cart";
-import { getCurrentUser } from "@/lib/auth";
-import { checkoutSchema } from "@/lib/validators";
-import { getVariantUnitPrice } from "@/lib/commerce";
+import { logError } from "@/lib/logger";
 import { createGuestOrderAccessToken } from "@/lib/order-access";
+import { prisma } from "@/lib/prisma";
+import { enforceRateLimit, getRequestFingerprint } from "@/lib/rate-limit";
+import { assertTrustedMutation } from "@/lib/security";
 import { getSiteSettings } from "@/lib/site-settings";
+import { checkoutSchema } from "@/lib/validators";
 
-export async function checkoutAction(formData: FormData) {
+export async function processCheckout(formData: FormData) {
+  await assertTrustedMutation("checkout:create");
+
   const user = await getCurrentUser();
   const parsed = checkoutSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? "Gecersiz checkout");
   }
+
+  const fingerprint = await getRequestFingerprint();
+  await enforceRateLimit({
+    scope: "checkout:create",
+    key: `${user?.id ?? "guest"}|${fingerprint}`,
+    limit: 6,
+    windowMs: 10 * 60 * 1000,
+    message: "Cok fazla checkout denemesi algilandi. Lutfen biraz sonra tekrar deneyin."
+  });
 
   const isGuestCheckout = !user;
   const normalizedCouponCode = parsed.data.couponCode?.trim().toUpperCase() || undefined;
@@ -45,6 +62,7 @@ export async function checkoutAction(formData: FormData) {
         where: { id: parsed.data.addressId, userId: user.id }
       })
     : null;
+
   if (!isGuestCheckout && !address) {
     throw new Error("Adres bulunamadi");
   }
@@ -72,9 +90,68 @@ export async function checkoutAction(formData: FormData) {
       };
 
   const totals = await calculateCartTotals(cart.id, normalizedCouponCode);
+  const replayKey = buildCheckoutReplayKey({
+    cartId: fullCart.id,
+    userId: user?.id ?? null,
+    addressId: shippingSnapshot.addressId,
+    guestEmail: shippingSnapshot.guestEmail,
+    paymentMethod: parsed.data.paymentMethod,
+    couponCode: normalizedCouponCode ?? null,
+    customerNote: parsed.data.customerNote ?? null,
+    items: fullCart.items.map((item) => ({
+      productId: item.productId,
+      variantId: item.variantId,
+      quantity: item.quantity,
+      updatedAt: item.updatedAt
+    }))
+  });
+
   const order = await prisma.$transaction(async (tx) => {
-    let couponCode: string | undefined;
     const now = new Date();
+    const replayWindowMs = env.ORDER_REPLAY_WINDOW_MINUTES * 60 * 1000;
+    let couponCode: string | undefined;
+
+    try {
+      await tx.operationReplayGuard.create({
+        data: {
+          scope: "checkout:create",
+          key: replayKey,
+          expiresAt: new Date(now.getTime() + replayWindowMs),
+          metadata: {
+            cartId: fullCart.id,
+            userId: user?.id ?? null
+          }
+        }
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        const existingReplay = await tx.operationReplayGuard.findUnique({
+          where: {
+            scope_key: {
+              scope: "checkout:create",
+              key: replayKey
+            }
+          }
+        });
+
+        if (existingReplay?.entityId) {
+          const existingOrder = await tx.order.findUnique({
+            where: { id: existingReplay.entityId }
+          });
+
+          if (existingOrder) {
+            return existingOrder;
+          }
+        }
+
+        throw new Error("Checkout istegi zaten isleniyor. Lutfen sayfayi yenileyip tekrar kontrol et.");
+      }
+
+      throw error;
+    }
 
     if (normalizedCouponCode) {
       const coupon = await tx.coupon.findFirst({
@@ -133,33 +210,68 @@ export async function checkoutAction(formData: FormData) {
         throw new Error("Stok veya urun durumu degisti");
       }
 
-      const nextStock = (variant?.stock ?? product.stock) - item.quantity;
       if (variant) {
-        await tx.productVariant.update({
-          where: { id: variant.id },
+        const updatedVariant = await tx.productVariant.updateMany({
+          where: {
+            id: variant.id,
+            productId: item.productId,
+            stock: { gte: item.quantity }
+          },
           data: { stock: { decrement: item.quantity } }
+        });
+
+        if (updatedVariant.count === 0) {
+          throw new Error("Secilen varyantin stogu degisti");
+        }
+
+        const currentVariant = await tx.productVariant.findUnique({
+          where: { id: variant.id },
+          select: { stock: true }
+        });
+
+        await tx.inventoryLog.create({
+          data: {
+            productId: product.id,
+            change: -item.quantity,
+            stockAfter: currentVariant?.stock ?? null,
+            reason: "ORDER_CREATED",
+            note: `Checkout ile siparis olusturuldu (varyant: ${variant.name}=${variant.value})`
+          }
         });
       } else {
-        await tx.product.update({
-          where: { id: product.id },
+        const updatedProduct = await tx.product.updateMany({
+          where: {
+            id: product.id,
+            isActive: true,
+            stock: { gte: item.quantity }
+          },
           data: { stock: { decrement: item.quantity } }
         });
-      }
 
-      await tx.inventoryLog.create({
-        data: {
-          productId: product.id,
-          change: -item.quantity,
-          stockAfter: nextStock,
-          reason: "ORDER_CREATED",
-          note: "Checkout ile siparis olusturuldu"
+        if (updatedProduct.count === 0) {
+          throw new Error("Stok veya urun durumu degisti");
         }
-      });
+
+        const currentProduct = await tx.product.findUnique({
+          where: { id: product.id },
+          select: { stock: true }
+        });
+
+        await tx.inventoryLog.create({
+          data: {
+            productId: product.id,
+            change: -item.quantity,
+            stockAfter: currentProduct?.stock ?? null,
+            reason: "ORDER_CREATED",
+            note: "Checkout ile siparis olusturuldu"
+          }
+        });
+      }
     }
 
     const created = await tx.order.create({
       data: {
-        orderNumber: `ADK-${Date.now()}`,
+        orderNumber: `ADK-${Date.now().toString(36).toUpperCase()}-${randomUUID().slice(0, 8).toUpperCase()}`,
         userId: user?.id ?? null,
         couponCode,
         status: parsed.data.paymentMethod === "BANK_TRANSFER" ? "WAITING_PAYMENT" : "PENDING",
@@ -176,6 +288,7 @@ export async function checkoutAction(formData: FormData) {
             const variantLabel = item.variant ? ` (${item.variant.name}: ${item.variant.value})` : "";
             return {
               productId: item.productId,
+              variantId: item.variant?.id ?? null,
               productName: `${item.product.name}${variantLabel}`,
               productSlug: item.product.slug,
               productImage: item.product.images[0]?.url,
@@ -197,6 +310,24 @@ export async function checkoutAction(formData: FormData) {
       }
     });
 
+    await tx.operationReplayGuard.update({
+      where: {
+        scope_key: {
+          scope: "checkout:create",
+          key: replayKey
+        }
+      },
+      data: {
+        entityId: created.id,
+        expiresAt: new Date(now.getTime() + replayWindowMs),
+        metadata: {
+          cartId: fullCart.id,
+          orderNumber: created.orderNumber,
+          userId: user?.id ?? null
+        }
+      }
+    });
+
     await tx.cart.update({
       where: { id: fullCart.id },
       data: { couponCode: null }
@@ -205,7 +336,6 @@ export async function checkoutAction(formData: FormData) {
     return created;
   });
 
-  const settings = await getSiteSettings();
   const customerEmail = user?.email ?? shippingSnapshot.guestEmail ?? null;
   const customerName = user?.name ?? shippingSnapshot.guestName ?? shippingSnapshot.shippingFullName;
   const lineItems = fullCart.items.map((item) => ({
@@ -215,57 +345,65 @@ export async function checkoutAction(formData: FormData) {
     lineTotal: getVariantUnitPrice(item.product, item.variant) * item.quantity
   }));
 
-  if (customerEmail) {
-    try {
-      await sendOrderConfirmationEmail({
-        email: customerEmail,
-        customerName,
-        orderNumber: order.orderNumber,
-        items: lineItems,
-        subtotal: totals.subtotal,
-        discountTotal: totals.discountTotal,
-        shippingTotal: totals.shippingTotal,
-        grandTotal: totals.grandTotal,
-        shippingFullName: shippingSnapshot.shippingFullName,
-        shippingPhone: shippingSnapshot.shippingPhone,
-        shippingCity: shippingSnapshot.shippingCity,
-        shippingDistrict: shippingSnapshot.shippingDistrict,
-        shippingAddress: shippingSnapshot.shippingAddress,
-        paymentMethod: parsed.data.paymentMethod,
-        bankAccountInfo: settings?.bankAccountInfo,
-        siteName: settings?.siteName ?? "Adakan Commerce"
-      });
-    } catch (error) {
-      console.error("Siparis onay e-postasi gonderilemedi", {
-        orderId: order.id,
-        error
-      });
-    }
-  }
+  void (async () => {
+    const settings = await getSiteSettings();
 
-  if (settings?.email) {
-    try {
-      await sendAdminNewOrderEmail({
-        email: settings.email,
-        orderNumber: order.orderNumber,
-        customerName,
-        grandTotal: totals.grandTotal,
-        paymentMethod: parsed.data.paymentMethod,
-        siteName: settings.siteName,
-        adminOrderUrl: `${env.NEXT_PUBLIC_SITE_URL}/admin/orders/${order.id}`
-      });
-    } catch (error) {
-      console.error("Admin yeni siparis e-postasi gonderilemedi", {
-        orderId: order.id,
-        error
-      });
+    if (customerEmail) {
+      try {
+        await sendOrderConfirmationEmail({
+          email: customerEmail,
+          customerName,
+          orderNumber: order.orderNumber,
+          items: lineItems,
+          subtotal: totals.subtotal,
+          discountTotal: totals.discountTotal,
+          shippingTotal: totals.shippingTotal,
+          grandTotal: totals.grandTotal,
+          shippingFullName: shippingSnapshot.shippingFullName,
+          shippingPhone: shippingSnapshot.shippingPhone,
+          shippingCity: shippingSnapshot.shippingCity,
+          shippingDistrict: shippingSnapshot.shippingDistrict,
+          shippingAddress: shippingSnapshot.shippingAddress,
+          paymentMethod: parsed.data.paymentMethod,
+          bankAccountInfo: settings?.bankAccountInfo,
+          siteName: settings?.siteName ?? "Adakan Commerce"
+        });
+      } catch (error) {
+        await logError("checkout.customer_email_failed", error, {
+          orderId: order.id,
+          customerEmail
+        });
+      }
     }
-  }
+
+    if (settings?.email) {
+      try {
+        await sendAdminNewOrderEmail({
+          email: settings.email,
+          orderNumber: order.orderNumber,
+          customerName,
+          grandTotal: totals.grandTotal,
+          paymentMethod: parsed.data.paymentMethod,
+          siteName: settings.siteName,
+          adminOrderUrl: `${env.NEXT_PUBLIC_SITE_URL}/admin/orders/${order.id}`
+        });
+      } catch (error) {
+        await logError("checkout.admin_email_failed", error, {
+          orderId: order.id,
+          adminEmail: settings.email
+        });
+      }
+    }
+  })();
 
   if (order.userId) {
-    redirect(`/orders/${order.id}/success`);
+    return `/orders/${order.id}/success`;
   }
 
   const accessToken = await createGuestOrderAccessToken(order.id);
-  redirect(`/orders/${order.id}/success?access=${encodeURIComponent(accessToken)}`);
+  return `/orders/${order.id}/success?access=${encodeURIComponent(accessToken)}`;
+}
+
+export async function checkoutAction(formData: FormData) {
+  redirect(await processCheckout(formData));
 }

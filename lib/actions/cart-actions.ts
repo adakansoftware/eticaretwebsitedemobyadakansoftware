@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { actionError, actionSuccess, type ActionResult } from "@/lib/action-response";
 import { calculateCartTotals, getCart, getOrCreateCart } from "@/lib/cart";
 import { prisma } from "@/lib/prisma";
+import { assertTrustedMutation } from "@/lib/security";
 import {
   cartItemIdSchema,
   cartItemUpdateSchema,
@@ -26,6 +27,7 @@ export async function addToCartAction(
   quantity = 1,
   variantId?: string
 ): Promise<ActionResult<{ cartId: string }>> {
+  await assertTrustedMutation("cart:add");
   const parsed = cartQuantitySchema.safeParse({ productId, quantity, variantId });
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "Sepet istegi gecersiz");
@@ -95,6 +97,7 @@ export async function addToCartAction(
 export async function updateCartItemQuantityAction(
   formData: FormData
 ): Promise<ActionResult<{ itemId: string; quantity: number }>> {
+  await assertTrustedMutation("cart:update");
   const parsed = cartItemUpdateSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "Sepet guncellenemedi");
@@ -107,7 +110,7 @@ export async function updateCartItemQuantityAction(
 
   const item = await prisma.cartItem.findFirst({
     where: { id: parsed.data.itemId, cartId },
-    include: { product: true }
+    include: { product: true, variant: true }
   });
 
   if (!item) {
@@ -118,7 +121,8 @@ export async function updateCartItemQuantityAction(
     return actionError("Bu urun artik aktif degil");
   }
 
-  if (parsed.data.quantity > item.product.stock) {
+  const availableStock = item.variant?.stock ?? item.product.stock;
+  if (parsed.data.quantity > availableStock) {
     return actionError("Guncel stok bu adet icin yeterli degil");
   }
 
@@ -137,6 +141,7 @@ export async function updateCartItemQuantityAction(
 export async function removeCartItemAction(
   formData: FormData
 ): Promise<ActionResult<{ itemId: string }>> {
+  await assertTrustedMutation("cart:remove");
   const parsed = cartItemIdSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "Sepet urunu silinemedi");
@@ -164,6 +169,7 @@ export async function removeCartItemAction(
 }
 
 export async function clearCartAction(): Promise<ActionResult<{ cartId: string }>> {
+  await assertTrustedMutation("cart:clear");
   const cart = await getCart();
   if (!cart.id) {
     return actionSuccess({ cartId: "" }, "Sepet zaten bos");
@@ -185,6 +191,7 @@ export async function clearCartAction(): Promise<ActionResult<{ cartId: string }
 export async function applyCouponAction(
   formData: FormData
 ): Promise<ActionResult<{ cartId: string; couponCode?: string }>> {
+  await assertTrustedMutation("cart:coupon");
   const parsed = couponCodeSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return actionError(parsed.error.issues[0]?.message ?? "Kupon kodu gecersiz");

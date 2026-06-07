@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  engineType = "binary"
 }
 
 datasource db {
@@ -295,6 +296,7 @@ model OrderItem {
   id            String   @id @default(cuid())
   orderId       String
   productId     String
+  variantId     String?
   productName   String
   productSlug   String
   productImage  String?
@@ -308,6 +310,7 @@ model OrderItem {
 
   @@index([orderId])
   @@index([productId])
+  @@index([variantId])
 }
 
 model Coupon {
@@ -388,6 +391,7 @@ model InventoryLog {
 model AdminAuditLog {
   id          String   @id @default(cuid())
   adminUserId String
+  requestId   String?
   action      String
   entityType  String
   entityId    String?
@@ -398,6 +402,7 @@ model AdminAuditLog {
 
   @@index([adminUserId, createdAt])
   @@index([entityType, entityId])
+  @@index([requestId])
 }
 
 model ActionRateLimit {
@@ -426,4 +431,18 @@ model PasswordResetToken {
 
   @@index([userId])
   @@index([token])
+}
+
+model OperationReplayGuard {
+  id        String   @id @default(cuid())
+  scope     String
+  key       String
+  entityId  String?
+  metadata  Json?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([scope, key])
+  @@index([expiresAt])
 }

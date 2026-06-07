@@ -5,9 +5,10 @@ import { createAdminAuditLog } from "@/lib/admin-audit";
 import { actionError, actionSuccess, type ActionResult } from "@/lib/action-response";
 import { requireAdmin } from "@/lib/auth";
 import { sendOrderStatusUpdateEmail } from "@/lib/emails/order-status-update";
-import { env } from "@/lib/env";
+import { logError } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 import { enforceRateLimit } from "@/lib/rate-limit";
+import { assertTrustedMutation } from "@/lib/security";
 import { getSiteSettings } from "@/lib/site-settings";
 import { orderAdminSchema } from "@/lib/validators";
 
@@ -30,6 +31,7 @@ function revalidateOrderPaths(orderId: string) {
 }
 
 export async function updateAdminOrderAction(formData: FormData) {
+  await assertTrustedMutation("admin:order-update");
   const admin = await requireAdmin();
   await enforceRateLimit({
     scope: "admin:order-update",
@@ -62,23 +64,52 @@ export async function updateAdminOrderAction(formData: FormData) {
       !order.inventoryRestoredAt
     ) {
       for (const item of order.items) {
-        const product = await tx.product.findUnique({
-          where: { id: item.productId }
+        if (item.variantId) {
+          const restoredVariant = await tx.productVariant.updateMany({
+            where: { id: item.variantId, productId: item.productId },
+            data: { stock: { increment: item.quantity } }
+          });
+
+          if (restoredVariant.count > 0) {
+            const currentVariant = await tx.productVariant.findUnique({
+              where: { id: item.variantId },
+              select: { stock: true }
+            });
+
+            await tx.inventoryLog.create({
+              data: {
+                productId: item.productId,
+                change: item.quantity,
+                stockAfter: currentVariant?.stock ?? null,
+                reason: parsed.data.status === "REFUNDED" ? "RETURNED" : "ORDER_CANCELLED",
+                note:
+                  parsed.data.status === "REFUNDED"
+                    ? `Iade ile varyant stogu geri yuklendi: ${order.orderNumber}`
+                    : `Siparis iptali ile varyant stogu geri yuklendi: ${order.orderNumber}`
+              }
+            });
+
+            continue;
+          }
+        }
+
+        const updatedProduct = await tx.product.updateMany({
+          where: { id: item.productId },
+          data: { stock: { increment: item.quantity } }
         });
 
-        if (!product) continue;
+        if (updatedProduct.count === 0) continue;
 
-        const nextStock = product.stock + item.quantity;
-        await tx.product.update({
-          where: { id: product.id },
-          data: { stock: nextStock }
+        const currentProduct = await tx.product.findUnique({
+          where: { id: item.productId },
+          select: { stock: true }
         });
 
         await tx.inventoryLog.create({
           data: {
-            productId: product.id,
+            productId: item.productId,
             change: item.quantity,
-            stockAfter: nextStock,
+            stockAfter: currentProduct?.stock ?? null,
             reason: parsed.data.status === "REFUNDED" ? "RETURNED" : "ORDER_CANCELLED",
             note:
               parsed.data.status === "REFUNDED"
@@ -114,18 +145,21 @@ export async function updateAdminOrderAction(formData: FormData) {
     }
   });
 
-  await createAdminAuditLog({
-    action: "UPDATE",
-    entityType: "ORDER",
-    entityId: parsed.data.orderId,
-    summary: `Siparis guncellendi: ${order.orderNumber}`,
-    metadata: {
-      status: parsed.data.status,
-      paymentStatus: parsed.data.paymentStatus ?? null,
-      trackingNumber: parsed.data.trackingNumber ?? null,
-      trackingCarrier: parsed.data.trackingCarrier ?? null
-    }
-  });
+  await createAdminAuditLog(
+    {
+      action: "UPDATE",
+      entityType: "ORDER",
+      entityId: parsed.data.orderId,
+      summary: `Siparis guncellendi: ${order.orderNumber}`,
+      metadata: {
+        status: parsed.data.status,
+        paymentStatus: parsed.data.paymentStatus ?? null,
+        trackingNumber: parsed.data.trackingNumber ?? null,
+        trackingCarrier: parsed.data.trackingCarrier ?? null
+      }
+    },
+    { adminUserId: admin.id }
+  );
   revalidateOrderPaths(parsed.data.orderId);
 
   const shouldSendStatusEmail =
@@ -148,15 +182,16 @@ export async function updateAdminOrderAction(formData: FormData) {
         siteName: settings?.siteName ?? "Adakan Commerce"
       });
     } catch (error) {
-      console.error("Siparis durum e-postasi gonderilemedi", {
+      await logError("admin.order_status_email_failed", error, {
         orderId: order.id,
-        error
+        recipientEmail
       });
     }
   }
 }
 
 export async function confirmManualPaymentAction(formData: FormData) {
+  await assertTrustedMutation("admin:payment-confirm");
   const admin = await requireAdmin();
   await enforceRateLimit({
     scope: "admin:payment-confirm",
@@ -196,13 +231,16 @@ export async function confirmManualPaymentAction(formData: FormData) {
     }
   });
 
-  await createAdminAuditLog({
-    action: "CONFIRM_PAYMENT",
-    entityType: "ORDER",
-    entityId: orderId,
-    summary: `Manuel odeme onaylandi: ${order.orderNumber}`,
-    metadata: { orderNumber: order.orderNumber }
-  });
+  await createAdminAuditLog(
+    {
+      action: "CONFIRM_PAYMENT",
+      entityType: "ORDER",
+      entityId: orderId,
+      summary: `Manuel odeme onaylandi: ${order.orderNumber}`,
+      metadata: { orderNumber: order.orderNumber }
+    },
+    { adminUserId: admin.id }
+  );
   revalidateOrderPaths(orderId);
 }
 
@@ -212,9 +250,9 @@ export async function updateAdminOrderFormAction(
 ): Promise<ActionResult> {
   try {
     await updateAdminOrderAction(formData);
-    return actionSuccess(undefined, "Sipariş güncellendi.");
+    return actionSuccess(undefined, "SipariÅŸ gÃ¼ncellendi.");
   } catch (error) {
-    return actionError(error instanceof Error ? error.message : "Sipariş güncellenemedi.");
+    return actionError(error instanceof Error ? error.message : "SipariÅŸ gÃ¼ncellenemedi.");
   }
 }
 
@@ -224,8 +262,8 @@ export async function confirmManualPaymentFormAction(
 ): Promise<ActionResult> {
   try {
     await confirmManualPaymentAction(formData);
-    return actionSuccess(undefined, "Manuel ödeme onaylandı.");
+    return actionSuccess(undefined, "Manuel Ã¶deme onaylandÄ±.");
   } catch (error) {
-    return actionError(error instanceof Error ? error.message : "Manuel ödeme onaylanamadı.");
+    return actionError(error instanceof Error ? error.message : "Manuel Ã¶deme onaylanamadÄ±.");
   }
 }

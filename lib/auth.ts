@@ -7,6 +7,8 @@ import { env } from "@/lib/env";
 
 const cookieName = "adakan_session";
 const secret = new TextEncoder().encode(env.AUTH_SECRET);
+const sessionIssuer = new URL(env.NEXT_PUBLIC_SITE_URL).origin;
+const sessionAudience = "adakan-commerce-core";
 
 type SessionPayload = { userId: string; role: "USER" | "ADMIN"; email: string };
 
@@ -22,6 +24,8 @@ export async function createSession(payload: SessionPayload) {
   const token = await new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
+    .setIssuer(sessionIssuer)
+    .setAudience(sessionAudience)
     .setExpirationTime("7d")
     .sign(secret);
 
@@ -31,7 +35,8 @@ export async function createSession(payload: SessionPayload) {
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: 60 * 60 * 24 * 7
+    maxAge: 60 * 60 * 24 * 7,
+    priority: "high"
   });
 }
 
@@ -46,7 +51,10 @@ export async function getSession(): Promise<SessionPayload | null> {
   if (!token) return null;
 
   try {
-    const { payload } = await jwtVerify(token, secret);
+    const { payload } = await jwtVerify(token, secret, {
+      issuer: sessionIssuer,
+      audience: sessionAudience
+    });
     return {
       userId: String(payload.userId),
       role: payload.role as "USER" | "ADMIN",

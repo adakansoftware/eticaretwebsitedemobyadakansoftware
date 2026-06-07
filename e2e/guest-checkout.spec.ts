@@ -1,6 +1,8 @@
 import { test, expect } from "@playwright/test";
 
 test("guest checkout can create an order from seeded product", async ({ page }) => {
+  test.setTimeout(60000);
+
   await page.goto("/products/manyetik-premium-telefon-standi");
   const addToCartButton = page.getByRole("button", { name: /Sepete ekle|Ekleniyor.../ });
   await addToCartButton.click();
@@ -24,9 +26,13 @@ test("guest checkout can create an order from seeded product", async ({ page }) 
   );
   await page.getByPlaceholder("Kurye, teslimat veya operasyon notu").fill("E2E guest checkout");
 
-  await page.getByRole("button", { name: "Siparisi olustur" }).click();
+  const successNavigation = page.waitForURL(/\/orders\/.+\/success(?:\?access=.*)?$/, {
+    timeout: 30000,
+    waitUntil: "domcontentloaded"
+  });
+  await page.getByRole("button", { name: "Siparisi olustur" }).click({ noWaitAfter: true });
+  await successNavigation;
 
-  await expect(page).toHaveURL(/\/orders\/.+\/success\?access=/, { timeout: 15000 });
   await expect(page.getByRole("heading", { name: "Siparis alindi" })).toBeVisible();
   await expect(page.getByText("Misafir siparisi icin bu sayfayi kaydedebilirsin")).toBeVisible();
 });

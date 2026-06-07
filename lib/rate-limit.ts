@@ -1,5 +1,6 @@
 import { cookies, headers } from "next/headers";
 import { createHash } from "node:crypto";
+import { logEvent } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
 type RateLimitOptions = {
@@ -75,6 +76,12 @@ export async function enforceRateLimit({
         blockedCount: { increment: 1 },
         lastBlockedAt: now
       }
+    });
+    await logEvent("warn", "security.rate_limit_blocked", {
+      scope,
+      key: hashedKey,
+      limit,
+      windowMs
     });
     throw new Error(message);
   }

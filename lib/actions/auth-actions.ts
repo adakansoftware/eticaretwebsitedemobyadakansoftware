@@ -6,7 +6,9 @@ import { actionError, actionSuccess, type ActionResult } from "@/lib/action-resp
 import { sendPasswordResetEmail } from "@/lib/emails/password-reset";
 import { prisma } from "@/lib/prisma";
 import { createSession, hashPassword, verifyPassword, clearSession, requireUser } from "@/lib/auth";
+import { logError } from "@/lib/logger";
 import { enforceRateLimit, getRequestFingerprint } from "@/lib/rate-limit";
+import { assertTrustedMutation } from "@/lib/security";
 import {
   changePasswordSchema,
   forgotPasswordSchema,
@@ -16,6 +18,7 @@ import {
 } from "@/lib/validators";
 
 export async function registerAction(formData: FormData) {
+  await assertTrustedMutation("auth:register");
   const parsed = registerSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? "Gecersiz bilgi");
@@ -91,6 +94,7 @@ async function authenticateUser(formData: FormData, scope: "customer" | "admin")
 }
 
 export async function customerLoginAction(formData: FormData) {
+  await assertTrustedMutation("auth:customer-login");
   const user = await authenticateUser(formData, "customer");
   await createSession({ userId: user.id, email: user.email, role: user.role });
   redirect("/");
@@ -111,6 +115,7 @@ export async function customerLoginFormAction(
 }
 
 export async function adminLoginAction(formData: FormData) {
+  await assertTrustedMutation("auth:admin-login");
   const user = await authenticateUser(formData, "admin");
   await createSession({ userId: user.id, email: user.email, role: user.role });
   redirect("/admin");
@@ -131,6 +136,7 @@ export async function adminLoginFormAction(
 }
 
 export async function logoutAction() {
+  await assertTrustedMutation("auth:logout");
   await clearSession();
   redirect("/");
 }
@@ -139,6 +145,7 @@ export async function forgotPasswordAction(
   _state: ActionResult | null,
   formData: FormData
 ): Promise<ActionResult> {
+  await assertTrustedMutation("auth:forgot-password");
   const parsed = forgotPasswordSchema.safeParse(Object.fromEntries(formData));
 
   if (!parsed.success) {
@@ -186,7 +193,9 @@ export async function forgotPasswordAction(
         token
       });
     } catch (error) {
-      console.error("Parola sifirlama e-postasi gonderilemedi", error);
+      await logError("auth.password_reset_email_failed", error, {
+        userId: user.id
+      });
     }
   }
 
@@ -200,6 +209,7 @@ export async function resetPasswordAction(
   _state: ActionResult | null,
   formData: FormData
 ): Promise<ActionResult> {
+  await assertTrustedMutation("auth:reset-password");
   const parsed = resetPasswordSchema.safeParse(Object.fromEntries(formData));
 
   if (!parsed.success) {
@@ -246,6 +256,7 @@ export async function changePasswordAction(
   _state: ActionResult | null,
   formData: FormData
 ): Promise<ActionResult> {
+  await assertTrustedMutation("auth:change-password");
   const user = await requireUser();
   const parsed = changePasswordSchema.safeParse(Object.fromEntries(formData));
 

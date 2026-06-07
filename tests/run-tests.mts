@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { actionError, actionSuccess } from "../lib/action-response.ts";
+import { buildCheckoutReplayKey } from "../lib/checkout-replay.ts";
 import { toCsvContent, toCsvRow } from "../lib/csv.ts";
+import { getEnvHealthIndicatorsFromConfig, summarizeHealth } from "../lib/health-core.ts";
 import { formatMoney } from "../lib/money.ts";
+import { buildTrustedOrigins, isTrustedOriginRequest, parseTrustedOrigins } from "../lib/origin.ts";
 import { createSlug } from "../lib/slug.ts";
 
 async function main() {
@@ -54,6 +57,102 @@ async function main() {
         const formatted = formatMoney(1499);
         assert.match(formatted, /₺|TRY/);
         assert.match(formatted, /1\.499|1,499|1499/);
+      }
+    },
+    {
+      name: "trusted origin parser deduplicates values",
+      run: () => {
+        assert.deepEqual(parseTrustedOrigins("http://localhost:3000, http://localhost:3000"), [
+          "http://localhost:3000"
+        ]);
+      }
+    },
+    {
+      name: "trusted request accepts same-site origin",
+      run: () => {
+        assert.equal(
+          isTrustedOriginRequest({
+            siteUrl: "http://localhost:3000",
+            configuredOrigins: buildTrustedOrigins("http://localhost:3000"),
+            origin: "http://localhost:3000",
+            host: "localhost:3000"
+          }),
+          true
+        );
+      }
+    },
+    {
+      name: "checkout replay key is stable for equal payloads",
+      run: () => {
+        const first = buildCheckoutReplayKey({
+          cartId: "cart-1",
+          userId: "user-1",
+          paymentMethod: "BANK_TRANSFER",
+          items: [
+            {
+              productId: "product-2",
+              variantId: null,
+              quantity: 1,
+              updatedAt: new Date("2026-06-06T09:00:00.000Z")
+            },
+            {
+              productId: "product-1",
+              variantId: "variant-1",
+              quantity: 2,
+              updatedAt: new Date("2026-06-06T10:00:00.000Z")
+            }
+          ]
+        });
+
+        const second = buildCheckoutReplayKey({
+          cartId: "cart-1",
+          userId: "user-1",
+          paymentMethod: "BANK_TRANSFER",
+          items: [
+            {
+              productId: "product-1",
+              variantId: "variant-1",
+              quantity: 2,
+              updatedAt: new Date("2026-06-06T10:00:00.000Z")
+            },
+            {
+              productId: "product-2",
+              variantId: null,
+              quantity: 1,
+              updatedAt: new Date("2026-06-06T09:00:00.000Z")
+            }
+          ]
+        });
+
+        assert.equal(first, second);
+      }
+    },
+    {
+      name: "health summary fails when any indicator is false",
+      run: () => {
+        const summary = summarizeHealth([
+          { name: "database", ok: true },
+          { name: "env", ok: false, detail: "missing" }
+        ]);
+
+        assert.equal(summary.ok, false);
+        assert.equal(summary.indicators.length, 2);
+      }
+    },
+    {
+      name: "env health indicators expose auth and smtp checks",
+      run: () => {
+        const indicators = getEnvHealthIndicatorsFromConfig({
+          authSecret: "a".repeat(32),
+          siteUrl: "http://localhost:3000",
+          smtpHost: "smtp.example.com",
+          smtpUser: "mailer",
+          smtpPass: "secret",
+          smtpFrom: "noreply@example.com",
+          nodeEnv: "development"
+        });
+        assert.equal(indicators.some((indicator) => indicator.name === "auth_secret"), true);
+        assert.equal(indicators.some((indicator) => indicator.name === "smtp"), true);
       }
     }
   ];

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Header } from "@/components/storefront/header";
 import { Button } from "@/components/ui/button";
-import { checkoutAction } from "@/lib/actions/checkout-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { calculateCartTotals, getCart } from "@/lib/cart";
 import { prisma } from "@/lib/prisma";
@@ -75,7 +74,7 @@ export default async function CheckoutPage() {
           ) : null}
 
           <div className="mt-10 grid gap-8 lg:grid-cols-[1.1fr_.9fr]">
-            <form action={checkoutAction} className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <form action="/api/checkout" method="post" className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
               <input type="hidden" name="guestMode" value={user ? "false" : "true"} />
 
               <div className="grid gap-6">
