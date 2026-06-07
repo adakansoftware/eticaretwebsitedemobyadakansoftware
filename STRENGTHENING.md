@@ -1,36 +1,37 @@
 # Strengthening Summary
 
-Bu repo üzerinde UI görünümüne dokunmadan aşağıdaki yapısal sertleştirmeler uygulanmıştır:
+This repository has been hardened structurally without changing the UI layer.
 
-## Güvenlik
+## Security
 
-- trusted-origin kontrolü
-- request-id üretimi ve response header taşıma
-- güçlendirilmiş JWT issuer/audience doğrulaması
-- auth, checkout, upload ve admin mutasyonlarında rate-limit
+- trusted-origin checks
+- request-id generation and propagation
+- stricter JWT issuer and audience validation
+- rate limiting on auth, checkout, upload, and admin mutations
+- stronger proxy security headers, including report-only CSP support
 
-## Sipariş ve stok
+## Orders and stock
 
 - checkout replay guard
-- varyant bazlı stok düşümü
-- iade/iptalde çift stok geri yazımını önleyen guard
-- varyant sipariş satırında `variantId` snapshot’u
+- variant-aware stock decrement
+- guards preventing double inventory restore on cancel or return
+- `variantId` snapshots on order items
 
-## Operasyon ve audit
+## Operations and audit
 
-- admin audit log içinde `requestId`
-- `live` ve `ready` health endpointleri
-- bakım için cleanup ve preflight scriptleri
+- `requestId` stored on admin audit logs
+- `live`, `ready`, and `ops` health endpoints
+- cleanup, timeout, anomaly, preflight, and assert scripts
 
-## Kalite hattı
+## Quality pipeline
 
 - `typecheck`
-- birleşik `verify`
-- helper davranış testleri
-- Playwright E2E regresyon paketi
+- unified `verify`
+- behavior tests
+- Playwright E2E regression coverage
 
-## Kalan küçük borçlar
+## Remaining small debts
 
-- cleanup apply komutu üretimde kontrollü ve onaylı işletilmeli
-- görsel kaynaklar için Next image `sizes` uyarısı ayrı bir frontend performans işi olarak duruyor
-- kullanıcıya ait eski migration klasörü repoda ayrıca değerlendirilmeli
+- destructive cleanup apply commands should still be run deliberately in production
+- any external monitoring, deploy, or backup workflow still depends on real secrets
+- the user-owned legacy migration folder should be reviewed separately

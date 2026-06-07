@@ -23,6 +23,11 @@ const envSchema = z.object({
   SENTRY_AUTH_TOKEN: z.string().optional(),
   SENTRY_ORG: z.string().optional(),
   SENTRY_PROJECT: z.string().optional(),
+  CSP_REPORT_ONLY: z
+    .union([z.boolean(), z.string()])
+    .optional()
+    .transform((value) => value !== false && value !== "false"),
+  CSP_REPORT_URI: z.string().optional(),
   BACKUP_DRILL_DATABASE_URL: z.string().url().optional().or(z.literal("")),
   BACKUP_DRILL_RESTORE_DATABASE_URL: z.string().url().optional().or(z.literal("")),
   BACKUP_PGDUMP_PATH: z.string().optional(),

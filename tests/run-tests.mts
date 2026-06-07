@@ -10,6 +10,7 @@ import { redactLogValue } from "../lib/log-redaction.ts";
 import { detectOrderAnomalies } from "../lib/order-anomalies-core.ts";
 import { detectTimedOutWaitingPaymentOrders } from "../lib/order-timeout-core.ts";
 import { summarizeOpsStatus } from "../lib/ops-core.ts";
+import { buildAdditionalSecurityHeaders } from "../lib/security-headers.ts";
 import { createSlug } from "../lib/slug.ts";
 import { MAX_FILE_SIZE, MAX_UPLOAD_REQUEST_SIZE, detectUploadExtension } from "../lib/upload.ts";
 
@@ -44,6 +45,31 @@ async function main() {
         assert.equal(headers.get("x-request-id"), "req-123");
         assert.equal(headers.get("cache-control"), "no-store");
         assert.equal(headers.get("x-extra"), "ok");
+      }
+    },
+    {
+      name: "security headers build report-only CSP by default",
+      run: () => {
+        const headers = buildAdditionalSecurityHeaders({
+          nodeEnv: "development",
+          siteUrl: "http://localhost:3000",
+          cspReportOnly: true
+        });
+        assert.equal(typeof headers["content-security-policy-report-only"], "string");
+        assert.equal(headers["strict-transport-security"], undefined);
+      }
+    },
+    {
+      name: "security headers include hsts in production and sentry connect-src",
+      run: () => {
+        const headers = buildAdditionalSecurityHeaders({
+          nodeEnv: "production",
+          siteUrl: "https://shop.example.com",
+          sentryDsn: "https://abc@example.ingest.sentry.io/123",
+          cspReportOnly: false
+        });
+        assert.equal(headers["strict-transport-security"]?.includes("max-age=31536000"), true);
+        assert.equal(headers["content-security-policy"]?.includes("https://example.ingest.sentry.io"), true);
       }
     },
     {

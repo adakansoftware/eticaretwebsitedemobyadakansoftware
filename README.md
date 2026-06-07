@@ -1,30 +1,32 @@
 # Adakan Commerce Core
 
-Bu repo artık yalnızca vitrin odaklı bir demo değil; auth, checkout, stok, admin operasyonları ve verify hattı sertleştirilmiş bir e-ticaret çekirdeği olarak düzenlenmiştir.
+This repository is no longer a storefront-only demo. It is structured as a production-minded commerce core with hardened auth, checkout, stock integrity, admin operations, and operational verification tooling.
 
-## Üretim odaklı öne çıkanlar
+## Production-oriented highlights
 
-- Trusted-origin koruması ve request-id taşıyan proxy katmanı
-- Güçlendirilmiş session/JWT ayarları
-- Auth, checkout, upload ve admin mutasyonlarında rate-limit
-- Checkout replay guard ile duplicate order azaltma
-- Varyant bazlı stok düşümü ve iade/iptal stok geri yazımı
-- Admin audit trail üzerinde request-id izi
-- `live` ve `ready` health endpointleri
-- Ops cleanup ve preflight scriptleri
-- Birleşik `verify` hattı
-- Unit-benzeri davranış testleri ve Playwright E2E paketi
+- Trusted-origin protection and request-id propagation in the proxy layer
+- Hardened session and JWT issuer/audience validation
+- Rate limiting for auth, checkout, upload, and admin mutations
+- Checkout replay guard to reduce duplicate order creation
+- Variant-aware stock decrement and safe stock restore on cancel or return
+- Admin audit trail with request-id correlation
+- `live`, `ready`, and admin-gated `ops` health endpoints
+- Cleanup, anomaly, timeout, preflight, and assert operational scripts
+- Unified `verify` pipeline
+- Behavior tests plus Playwright E2E coverage
+- Report-only CSP and stronger security headers ready for production rollout
 
 ## Stack
 
 - Next.js App Router
 - TypeScript
 - Prisma + PostgreSQL
-- Server Actions ve Route Handlers
+- Server Actions and Route Handlers
 - Zod
 - Playwright
+- Sentry-ready instrumentation
 
-## Kurulum
+## Setup
 
 ```powershell
 npm install
@@ -34,7 +36,7 @@ npm run prisma:seed
 npm run dev
 ```
 
-## Temel komutlar
+## Core commands
 
 ```powershell
 npm run lint
@@ -49,42 +51,43 @@ npm run ops:report
 npm run ops:cleanup:dry
 ```
 
-`npm run ops:cleanup:apply` operasyonel veri temizliği yapar; üretimde kontrollü kullanılmalıdır.
+`npm run ops:cleanup:apply` deletes stale operational records and should be used deliberately in production.
 
-## Health endpointleri
+## Health endpoints
 
 - `GET /api/health/live`
 - `GET /api/health/ready`
 - `GET /api/health/ops`
 
-`ready` çıktısı env, veritabanı ve kritik tablo kontrollerini döner. Yanıtlar `x-request-id` header’ı taşır.
+`ready` verifies environment, database connectivity, and critical tables. Responses include the `x-request-id` header.
 
-## Güvenlik notları
+## Security notes
 
-- `AUTH_SECRET` uzun ve benzersiz olmalı
-- `TRUSTED_ORIGINS` üretim domainleriyle doldurulmalı
-- Admin mutasyonları hem auth hem trusted-origin hem rate-limit katmanından geçer
-- Checkout create akışı duplicate submit’e karşı replay guard kullanır
+- `AUTH_SECRET` must be long and unique
+- `TRUSTED_ORIGINS` must include real production domains
+- Admin mutations pass through auth, trusted-origin, and rate-limit checks
+- Checkout creation uses a replay guard against duplicate submits
+- Security headers include HSTS in production and CSP in report-only mode by default
 
-## Sentry ve deploy
+## Sentry and deploy
 
-- Sentry istege bagli ve env-gated calisir; `SENTRY_DSN` veya `NEXT_PUBLIC_SENTRY_DSN` yoksa sessiz no-op kalir.
-- `.github/workflows` altinda `CI`, `Ops Cron`, `Backup Drill`, `Deploy Staging` ve `Deploy Production` workflow’lari vardir.
-- Staging/prod deploy icin `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`, uygun ortam `DATABASE_URL`, `AUTH_SECRET`, `NEXT_PUBLIC_SITE_URL` ve gerekiyorsa Sentry secret’lari tanimlanmalidir.
+- Sentry is optional and env-gated. If `SENTRY_DSN` and `NEXT_PUBLIC_SENTRY_DSN` are missing, it stays as a no-op.
+- `.github/workflows` includes `CI`, `Ops Cron`, `Backup Drill`, `Deploy Staging`, and `Deploy Production`.
+- Staging and production deploys require `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`, the right environment `DATABASE_URL`, `AUTH_SECRET`, `NEXT_PUBLIC_SITE_URL`, and any needed Sentry secrets.
 
-## Operasyon rehberi
+## Operations guides
 
-Ayrıntılı üretim adımları için:
+See:
 
 - [OPERATIONS.md](C:/Users/adaka/Desktop/aktif%20projeler/eticaretdemobyadakansofttware/OPERATIONS.md)
 - [STRENGTHENING.md](C:/Users/adaka/Desktop/aktif%20projeler/eticaretdemobyadakansofttware/STRENGTHENING.md)
 
-## Seed politikası
+## Seed policy
 
-- Demo seed sadece development / kontrollü test ortamı içindir
-- Production’da seed çalıştırılmamalı
+- Demo seed data is for development and controlled test environments only
+- Do not run seed in production
 
-## Demo hesaplar
+## Demo accounts
 
 ```txt
 Admin

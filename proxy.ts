@@ -13,6 +13,7 @@ import {
   forwardedPathHeaderName,
   requestIdHeaderName
 } from "@/lib/request-context";
+import { buildAdditionalSecurityHeaders } from "@/lib/security-headers";
 import { sessionAudience, sessionIssuer, sessionSecret } from "@/lib/session-config";
 
 const publicAssetPattern = /\.(?:png|jpg|jpeg|gif|webp|svg|ico|css|js|map)$/i;
@@ -49,6 +50,14 @@ export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const requestId = req.headers.get(requestIdHeaderName) ?? createRequestId();
   const isServerActionRequest = req.headers.has("next-action");
+  const extraSecurityHeaders = buildAdditionalSecurityHeaders({
+    nodeEnv: process.env.NODE_ENV,
+    siteUrl: env.NEXT_PUBLIC_SITE_URL,
+    sentryDsn: env.SENTRY_DSN,
+    publicSentryDsn: env.NEXT_PUBLIC_SENTRY_DSN,
+    cspReportOnly: env.CSP_REPORT_ONLY,
+    cspReportUri: env.CSP_REPORT_URI
+  });
   const forwardedHeaders = new Headers(req.headers);
   forwardedHeaders.set(requestIdHeaderName, requestId);
   forwardedHeaders.set(forwardedMethodHeaderName, req.method);
@@ -69,6 +78,9 @@ export async function proxy(req: NextRequest) {
       "permissions-policy",
       "camera=(), microphone=(), geolocation=(), payment=()"
     );
+    for (const [key, value] of Object.entries(extraSecurityHeaders)) {
+      response.headers.set(key, value);
+    }
     return response;
   };
 

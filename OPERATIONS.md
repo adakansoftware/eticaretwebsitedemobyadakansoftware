@@ -2,128 +2,129 @@
 
 ## Production checklist
 
-- `AUTH_SECRET` üretim için döndürülmüş ve benzersiz mi
-- `TRUSTED_ORIGINS` gerçek domainlerle tanımlı mı
-- `NEXT_PUBLIC_SITE_URL` canlı origin’e işaret ediyor mu
-- SMTP bilgileri test edildi mi
-- `npx prisma migrate deploy` çalıştı mı
-- son `npm run verify` ve `npm run e2e` geçti mi
-- yedekleme ve restore prosedürü hazır mı
-- admin audit log ve rate-limit tabloları izleniyor mu
+- `AUTH_SECRET` is unique and rotated for production
+- `TRUSTED_ORIGINS` includes real deployment domains
+- `NEXT_PUBLIC_SITE_URL` points to the live origin
+- SMTP credentials have been tested
+- `npx prisma migrate deploy` has completed successfully
+- the latest `npm run verify` and `npm run e2e` have passed
+- backup and restore procedures are documented and reachable
+- admin audit and rate-limit tables are monitored
+- Sentry DSN and deploy secrets are configured if external monitoring is desired
 
-## Deploy sırası
+## Deploy flow
 
 1. `npm install`
 2. `npx prisma generate`
 3. `npx prisma migrate deploy`
 4. `npm run verify`
 5. `npm run build`
-6. uygulamayı ayağa kaldır
+6. start the application
 7. `GET /api/health/live`
 8. `GET /api/health/ready`
-
 9. `npm run ops:status`
 
 ## Ops status
 
-HÄ±zlÄ± operasyon Ã¶zeti:
+Quick operational summary:
 
 ```powershell
 npm run ops:status
 ```
 
-CI / cron iÃ§in fail-fast assert:
+Fail-fast assertion for CI or cron:
 
 ```powershell
 npm run ops:assert
 ```
 
-BirleÅŸik incident raporu:
+Combined incident snapshot:
 
 ```powershell
 npm run ops:report
 ```
 
-Backup / restore tatbikati:
+Backup and restore drill:
 
 ```powershell
 npm run ops:backup:drill
 npm run ops:backup:assert
 ```
 
-Bu Ã¶zet ÅŸu sinyalleri raporlar:
+The summary reports:
 
-- dÃ¼ÅŸÃ¼k stokta aktif Ã¼rÃ¼n sayÄ±sÄ±
-- beklenenden uzun sÃ¼re aÃ§Ä±k kalan sipariÅŸler
-- son penceredeki rate-limit blok olayÄ± sayÄ±sÄ±
-- temizlenmemiÅŸ password reset token kayÄ±tlarÄ±
-- temizlenmemiÅŸ replay guard kayÄ±tlarÄ±
-- site settings ve admin kullanÄ±cÄ± varlÄ±ÄŸÄ±
+- low-stock active product count
+- orders open longer than expected
+- recent rate-limit block count
+- expired password reset tokens
+- stale replay guard records
+- site settings presence
+- admin user presence
 
-SipariÅŸ anomali raporu:
+Order anomaly report:
 
 ```powershell
 npm run ops:orders:anomalies
 ```
 
-Bu rapor ÅŸunlarÄ± ayrÄ±ÅŸtÄ±rÄ±r:
+This report separates:
 
-- stuck fulfillment / payment
-- onaylanmÄ±ÅŸ Ã¶deme ama ilerlemeyen sipariÅŸ
-- tracking bilgisi eksik sevk sipariÅŸi
-- inventory restore iÅŸareti eksik iptal / iade
-- payment kaydÄ± eksik havale sipariÅŸi
+- stuck fulfillment or payment
+- confirmed payment with no order progression
+- shipped orders missing tracking
+- cancelled or refunded orders missing inventory restore markers
+- bank transfer orders missing payment records
 
-Zaman aÅŸÄ±mÄ±na dÃ¼ÅŸen havale sipariÅŸleri iÃ§in dry-run:
+Dry run for timed-out bank transfer orders:
 
 ```powershell
 npm run ops:orders:timeout:dry
 ```
 
-GerÃ§ek uygulama:
+Real application:
 
 ```powershell
 npm run ops:orders:timeout:apply
 ```
 
-Bu komut yalnÄ±zca:
+This command only cancels orders that are:
 
 - `WAITING_PAYMENT`
 - `BANK_TRANSFER`
-- timeout eÅŸiÄŸini aÅŸmÄ±ÅŸ
-- stok geri yÃ¼klemesi daha Ã¶nce yapÄ±lmamÄ±ÅŸ
+- older than the configured timeout
+- not already restored back into inventory
 
-sipariÅŸleri otomatik `CANCELLED` durumuna alÄ±r ve stoklarÄ± geri yazar.
+## Cleanup and retention
 
-## Cleanup / retention
-
-Ön izleme:
+Preview:
 
 ```powershell
 npm run ops:cleanup:dry
 ```
 
-Uygulama:
+Apply:
 
 ```powershell
 npm run ops:cleanup:apply
 ```
 
-Temizlenen alanlar:
+Cleanup covers:
 
-- eski admin audit kayıtları
-- süresi geçmiş rate-limit kayıtları
-- süresi geçmiş replay guard kayıtları
-- eski password reset token’ları
+- old admin audit rows
+- expired rate-limit rows
+- expired replay guard rows
+- stale password reset tokens
 
-## Backup / restore
+## Backup and restore
 
-- PostgreSQL yedeğini uygulama deploy’undan bağımsız periyodik alın
-- migration öncesi snapshot alın
-- restore sonrası `GET /api/health/ready` ile kontrol edin
+- take PostgreSQL backups independently from deploys
+- create a snapshot before running migrations
+- after restore, confirm `GET /api/health/ready`
+- if `BACKUP_DRILL_RESTORE_DATABASE_URL` is configured, run the restore drill regularly
 
-## Incident notları
+## Incident notes
 
-- checkout duplicate şüphesi varsa `OperationReplayGuard` ve ilgili `Order` kayıtlarını birlikte inceleyin
-- admin operasyon şüphesinde `AdminAuditLog.requestId` üzerinden log korelasyonu yapın
-- abuse şüphesinde `ActionRateLimit` tablolarını scope bazında inceleyin
+- for suspected duplicate checkout, inspect `OperationReplayGuard` together with related `Order` rows
+- for admin operation incidents, correlate logs with `AdminAuditLog.requestId`
+- for abuse spikes, inspect `ActionRateLimit` by scope
+- for CSP rollout, review report-only findings before moving to enforced mode
