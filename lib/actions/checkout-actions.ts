@@ -8,6 +8,7 @@ import { getCart, calculateCartTotals } from "@/lib/cart";
 import { buildCheckoutReplayKey } from "@/lib/checkout-replay";
 import { getVariantUnitPrice } from "@/lib/commerce";
 import { env } from "@/lib/env";
+import { buildInitialOrderStatus, buildInitialPaymentStatus } from "@/lib/payment-method-core";
 import { createGuestOrderAccessToken } from "@/lib/order-access";
 import { outboxEventTypes, enqueueOutboxEvent } from "@/lib/outbox";
 import { prisma } from "@/lib/prisma";
@@ -271,7 +272,7 @@ export async function processCheckout(formData: FormData) {
         orderNumber: `ADK-${Date.now().toString(36).toUpperCase()}-${randomUUID().slice(0, 8).toUpperCase()}`,
         userId: user?.id ?? null,
         couponCode,
-        status: parsed.data.paymentMethod === "BANK_TRANSFER" ? "WAITING_PAYMENT" : "PENDING",
+        status: buildInitialOrderStatus(parsed.data.paymentMethod),
         paymentMethod: parsed.data.paymentMethod,
         subtotal: totals.subtotal,
         discountTotal: totals.discountTotal,
@@ -300,7 +301,7 @@ export async function processCheckout(formData: FormData) {
         payment: {
           create: {
             method: parsed.data.paymentMethod,
-            status: "WAITING",
+            status: buildInitialPaymentStatus(),
             amount: totals.grandTotal
           }
         }

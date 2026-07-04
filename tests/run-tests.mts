@@ -7,13 +7,26 @@ import { toCsvContent, toCsvRow } from "../lib/csv.ts";
 import { getEnvHealthIndicatorsFromConfig, summarizeHealth } from "../lib/health-core.ts";
 import { HttpError, getHttpErrorStatus } from "../lib/http-error.ts";
 import { formatMoney } from "../lib/money.ts";
+import {
+  ensureOrderStatusTransition,
+  shouldQueueOrderStatusNotification,
+  shouldRestoreInventoryForStatusChange,
+  validateShippingTransition
+} from "../lib/order-lifecycle-core.ts";
 import { buildTrustedOrigins, isTrustedOriginRequest, parseTrustedOrigins } from "../lib/origin.ts";
 import { redactLogValue } from "../lib/log-redaction.ts";
 import { detectOrderAnomalies } from "../lib/order-anomalies-core.ts";
 import { detectTimedOutWaitingPaymentOrders } from "../lib/order-timeout-core.ts";
 import { summarizeOpsStatus } from "../lib/ops-core.ts";
 import { buildNextOutboxAvailability } from "../lib/outbox-core.ts";
+import {
+  buildInitialOrderStatus,
+  buildInitialPaymentStatus,
+  buildOrderStatusAfterManualPaymentConfirmation,
+  paymentMethodRequiresManualConfirmation
+} from "../lib/payment-method-core.ts";
 import { buildAdditionalSecurityHeaders } from "../lib/security-headers.ts";
+import { shouldRequireTrackingDetails } from "../lib/shipping-core.ts";
 import { createSlug } from "../lib/slug.ts";
 import {
   buildSignedS3PutRequest,
@@ -45,6 +58,65 @@ async function main() {
         if (!result.success) {
           assert.deepEqual(result.fieldErrors, { email: ["Gecersiz"] });
         }
+      }
+    },
+    {
+      name: "payment method core derives initial lifecycle",
+      run: () => {
+        assert.equal(buildInitialOrderStatus("BANK_TRANSFER"), "WAITING_PAYMENT");
+        assert.equal(buildInitialOrderStatus("CASH_ON_DELIVERY"), "PENDING");
+        assert.equal(buildInitialPaymentStatus(), "WAITING");
+        assert.equal(paymentMethodRequiresManualConfirmation("BANK_TRANSFER"), true);
+        assert.equal(buildOrderStatusAfterManualPaymentConfirmation("WAITING_PAYMENT"), "PAID");
+      }
+    },
+    {
+      name: "order lifecycle blocks invalid rollback transitions",
+      run: () => {
+        assert.throws(
+          () => ensureOrderStatusTransition("CANCELLED", "PAID"),
+          /Iptal veya iade edilmis siparis/
+        );
+        assert.throws(
+          () => ensureOrderStatusTransition("DELIVERED", "PREPARING"),
+          /Teslim edilen siparis/
+        );
+      }
+    },
+    {
+      name: "order lifecycle detects restore and notification conditions",
+      run: () => {
+        assert.equal(
+          shouldRestoreInventoryForStatusChange("PAID", "CANCELLED", null),
+          true
+        );
+        assert.equal(
+          shouldRestoreInventoryForStatusChange("PAID", "CANCELLED", new Date()),
+          false
+        );
+        assert.equal(
+          shouldQueueOrderStatusNotification({
+            previousStatus: "PAID",
+            nextStatus: "SHIPPED",
+            previousTrackingNumber: null,
+            previousTrackingCarrier: null,
+            nextTrackingNumber: "TRK123",
+            nextTrackingCarrier: "YURTICI",
+            recipientEmail: "user@example.com"
+          }),
+          true
+        );
+      }
+    },
+    {
+      name: "shipping core requires tracking on shipped orders",
+      run: () => {
+        assert.equal(shouldRequireTrackingDetails("SHIPPED", null, null), true);
+        assert.equal(shouldRequireTrackingDetails("PREPARING", null, null), false);
+        assert.throws(
+          () => validateShippingTransition({ status: "SHIPPED", trackingNumber: null, trackingCarrier: null }),
+          /takip numarasi ve kargo firmasi zorunludur/
+        );
       }
     },
     {

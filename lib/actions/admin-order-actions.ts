@@ -5,24 +5,18 @@ import { OrderStatus } from "@prisma/client";
 import { createAdminAuditLog } from "@/lib/admin-audit";
 import { actionError, actionSuccess, type ActionResult } from "@/lib/action-response";
 import { requireAdminPermission, adminPermissions } from "@/lib/auth";
+import {
+  ensureOrderStatusTransition,
+  shouldQueueOrderStatusNotification,
+  shouldRestoreInventoryForStatusChange,
+  validateShippingTransition
+} from "@/lib/order-lifecycle-core";
 import { outboxEventTypes, enqueueOutboxEvent } from "@/lib/outbox";
+import { buildOrderStatusAfterManualPaymentConfirmation } from "@/lib/payment-method-core";
 import { prisma } from "@/lib/prisma";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { assertTrustedMutation } from "@/lib/security";
 import { orderAdminSchema } from "@/lib/validators";
-
-const blockedRollbackStatuses = new Set<OrderStatus>(["CANCELLED", "REFUNDED"]);
-const rollbackStatuses = new Set<OrderStatus>(["CANCELLED", "REFUNDED"]);
-
-function ensureStatusTransition(currentStatus: OrderStatus, nextStatus: OrderStatus) {
-  if (currentStatus === nextStatus) return;
-  if (blockedRollbackStatuses.has(currentStatus)) {
-    throw new Error("Iptal veya iade edilmis siparis farkli bir duruma geri alinamaz");
-  }
-  if (currentStatus === "DELIVERED" && nextStatus !== "REFUNDED") {
-    throw new Error("Teslim edilen siparis yalnizca iade akisina alinabilir");
-  }
-}
 
 function revalidateOrderPaths(orderId: string) {
   revalidatePath("/admin/orders");
@@ -50,23 +44,31 @@ export async function updateAdminOrderAction(formData: FormData) {
     include: { payment: true, items: true, user: true }
   });
 
-  if (!order) throw new Error("Siparis bulunamadi");
+  if (!order) {
+    throw new Error("Siparis bulunamadi");
+  }
 
-  ensureStatusTransition(order.status, parsed.data.status);
+  ensureOrderStatusTransition(order.status, parsed.data.status);
+  validateShippingTransition({
+    status: parsed.data.status,
+    trackingNumber: parsed.data.trackingNumber ?? null,
+    trackingCarrier: parsed.data.trackingCarrier ?? null
+  });
 
-  const shouldSendStatusEmail =
-    order.status !== parsed.data.status ||
-    (parsed.data.trackingNumber ?? null) !== (order.trackingNumber ?? null) ||
-    (parsed.data.trackingCarrier ?? null) !== (order.trackingCarrier ?? null);
+  const shouldSendStatusEmail = shouldQueueOrderStatusNotification({
+    previousStatus: order.status,
+    nextStatus: parsed.data.status,
+    previousTrackingNumber: order.trackingNumber,
+    previousTrackingCarrier: order.trackingCarrier,
+    nextTrackingNumber: parsed.data.trackingNumber ?? null,
+    nextTrackingCarrier: parsed.data.trackingCarrier ?? null,
+    recipientEmail: order.user?.email ?? order.guestEmail
+  });
 
   await prisma.$transaction(async (tx) => {
     let inventoryRestoredAt = order.inventoryRestoredAt;
 
-    if (
-      order.status !== parsed.data.status &&
-      rollbackStatuses.has(parsed.data.status) &&
-      !order.inventoryRestoredAt
-    ) {
+    if (shouldRestoreInventoryForStatusChange(order.status, parsed.data.status, order.inventoryRestoredAt)) {
       for (const item of order.items) {
         if (item.variantId) {
           const restoredVariant = await tx.productVariant.updateMany({
@@ -102,7 +104,9 @@ export async function updateAdminOrderAction(formData: FormData) {
           data: { stock: { increment: item.quantity } }
         });
 
-        if (updatedProduct.count === 0) continue;
+        if (updatedProduct.count === 0) {
+          continue;
+        }
 
         const currentProduct = await tx.product.findUnique({
           where: { id: item.productId },
@@ -148,7 +152,7 @@ export async function updateAdminOrderAction(formData: FormData) {
       });
     }
 
-    if (shouldSendStatusEmail && (order.user?.email ?? order.guestEmail)) {
+    if (shouldSendStatusEmail) {
       await enqueueOutboxEvent(tx, outboxEventTypes.orderStatusUpdated, {
         orderId: order.id
       });
@@ -171,7 +175,6 @@ export async function updateAdminOrderAction(formData: FormData) {
     { adminUserId: admin.id }
   );
   revalidateOrderPaths(parsed.data.orderId);
-
 }
 
 export async function confirmManualPaymentAction(formData: FormData) {
@@ -184,17 +187,26 @@ export async function confirmManualPaymentAction(formData: FormData) {
     windowMs: 10 * 60 * 1000,
     message: "Cok fazla manuel odeme onayi yapildi. Lutfen biraz sonra tekrar deneyin."
   });
+
   const orderId = String(formData.get("orderId") ?? "");
-  if (!orderId) throw new Error("Siparis bulunamadi");
+  if (!orderId) {
+    throw new Error("Siparis bulunamadi");
+  }
 
   const order = await prisma.order.findUnique({
     where: { id: orderId },
     include: { payment: true }
   });
 
-  if (!order || !order.payment) throw new Error("Odeme kaydi bulunamadi");
-  if (order.payment.status === "CONFIRMED") throw new Error("Odeme zaten onayli");
-  if (blockedRollbackStatuses.has(order.status)) {
+  if (!order || !order.payment) {
+    throw new Error("Odeme kaydi bulunamadi");
+  }
+
+  if (order.payment.status === "CONFIRMED") {
+    throw new Error("Odeme zaten onayli");
+  }
+
+  if (order.status === "CANCELLED" || order.status === "REFUNDED") {
     throw new Error("Iptal veya iade edilmis sipariste odeme onaylanamaz");
   }
 
@@ -207,10 +219,11 @@ export async function confirmManualPaymentAction(formData: FormData) {
       }
     });
 
-    if (order.status === "WAITING_PAYMENT" || order.status === "PENDING") {
+    const nextStatus = buildOrderStatusAfterManualPaymentConfirmation(order.status as OrderStatus);
+    if (nextStatus !== order.status) {
       await tx.order.update({
         where: { id: orderId },
-        data: { status: "PAID" }
+        data: { status: nextStatus }
       });
     }
   });
@@ -234,9 +247,9 @@ export async function updateAdminOrderFormAction(
 ): Promise<ActionResult> {
   try {
     await updateAdminOrderAction(formData);
-    return actionSuccess(undefined, "SipariÅŸ gÃ¼ncellendi.");
+    return actionSuccess(undefined, "Siparis guncellendi.");
   } catch (error) {
-    return actionError(error instanceof Error ? error.message : "SipariÅŸ gÃ¼ncellenemedi.");
+    return actionError(error instanceof Error ? error.message : "Siparis guncellenemedi.");
   }
 }
 
@@ -246,8 +259,8 @@ export async function confirmManualPaymentFormAction(
 ): Promise<ActionResult> {
   try {
     await confirmManualPaymentAction(formData);
-    return actionSuccess(undefined, "Manuel Ã¶deme onaylandÄ±.");
+    return actionSuccess(undefined, "Manuel odeme onaylandi.");
   } catch (error) {
-    return actionError(error instanceof Error ? error.message : "Manuel Ã¶deme onaylanamadÄ±.");
+    return actionError(error instanceof Error ? error.message : "Manuel odeme onaylanamadi.");
   }
 }
